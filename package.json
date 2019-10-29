@@ -41,7 +41,7 @@
 	},
 	"dependencies": {
 		"@chkt/states": "1.0.0-beta.1",
-		"@chkt/onceupon": "1.0.0-alpha.4",
+		"@chkt/onceupon": "1.0.0-alpha.10",
 		"path-to-regexp": "^3.0",
 		"query-string": "^6.8"
 	}
