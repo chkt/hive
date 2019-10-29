@@ -52,7 +52,9 @@ export enum http_request_header {
 	content_type = 'Content-Type',
 	cors_headers = 'Access-Control-Request-Headers',
 	cors_method = 'Access-Control-Request-Method',
-	origin = 'Origin'
+	origin = 'Origin',
+	proxy_forwarded_for = 'X-Forwarded-For',
+	user_agent = 'User-Agent'
 }
 
 export enum http_response_header {
