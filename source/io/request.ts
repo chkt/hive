@@ -1,8 +1,9 @@
 import { IncomingMessage } from "http";
-
-import { isEncoding, isMimeType, mime_encoding, mime_type, MimeType } from "./mimeType";
-import { Hash } from '../common/base/Hash';
 import * as https from "https";
+
+import { Hash } from '../common/base/Hash';
+import { isEncoding, isMimeType, mime_encoding, MimeType } from "./mimeType";
+import { http_request_header } from "./http";
 
 
 const contentTypeExpr = /^([a-z]+\/[a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
@@ -18,6 +19,19 @@ export function decodeContentType(header:string) : MimeType {
 	}
 
 	throw new Error();
+}
+
+export function getRemoteAddress(req:IncomingMessage) : string {
+	const forwarded = req.headers[ http_request_header.proxy_forwarded_for.toLowerCase() ];
+	const remote = req.connection.remoteAddress;
+
+	const ips = (typeof forwarded === 'string' ? forwarded : '')
+		.split(',')
+		.concat([ typeof remote === 'string' ? remote : '' ])
+		.map(str => str.trim())
+		.filter(str => str !== '');
+
+	return ips.length !== 0 ? ips[0] : '0.0.0.0';
 }
 
 export async function getBody(req:IncomingMessage, timeout:number = 10000) : Promise<Buffer> {
