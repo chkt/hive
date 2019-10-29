@@ -16,7 +16,7 @@ rules:
     - true
     - 2
   no-console:
-    - false
+    - true
   no-implicit-dependencies:
     - true
     - dev
