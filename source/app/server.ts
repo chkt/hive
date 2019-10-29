@@ -43,7 +43,10 @@ function onDown(this:Server) : void {
 function shutdown(this:Server, signal:Signals) : void {
 	new Promise(resolve => {
 		this.getConnections((err, num) => {
-			logMessage(`received ${ signal }, going down with ${ err === null ? num : '?' } connections`);
+			logMessage(
+				`received ${ signal }, going down with ${ err === null ? num : '?' } connections`,
+				log_level.level_notice
+			);
 			resolve();
 		});
 	}).then(() => this.close());
