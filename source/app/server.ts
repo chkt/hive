@@ -1,11 +1,37 @@
-import { handleRequest } from "./app";
-import { Server } from "http";
-import { AddressInfo } from "net";
-import { log_level, logMessage, setLogThreshold } from "../log/log";
 import Signals = NodeJS.Signals;
+import { AddressInfo } from "net";
+import { Server } from "http";
+import { log_level } from "@chkt/onceupon/dist/level";
+import { handleRequest } from "./app";
+import { LoggerHost } from "./host";
 
 
 type handleSignals = (signal:Signals) => void;
+
+interface ServerConfig {
+	readonly port? : number;
+	readonly shutdownSignals? : Signals[];
+	readonly host : LoggerHost;
+	readonly handler : handleRequest;
+}
+
+type DefaultServerConfig = Required<Pick<ServerSettings, 'port'|'shutdownSignals'>>;
+type ServerSettings = Required<ServerConfig>;
+
+
+function getDefaultSettings() : DefaultServerConfig {
+	return {
+		port : 80,
+		shutdownSignals : [ 'SIGHUP', 'SIGINT', 'SIGTERM' ]
+	};
+}
+
+function getSettings(config:ServerConfig) : ServerSettings {
+	return {
+		...getDefaultSettings(),
+		...config
+	};
+}
 
 
 const enum server_event {
@@ -28,44 +54,46 @@ function onSignals(signals:Signals[], handler:handleSignals) : void {
 }
 
 
-function onUp(this:Server) : void {
+function onUp(this:Server, host:LoggerHost) : void {
 	const address = this.address();
 	const port = isAddressInfo(address) ? address.port : address;
 
-	logMessage(`up, attached to port ${ port }`, log_level.level_notice);
+	host.logger.message(`up, attached to port ${ port }`, log_level.notice);
 }
 
-function onDown(this:Server) : void {
-	logMessage(`down`, log_level.level_notice);
+function onDown(this:Server, host:LoggerHost) : void {
+	host.logger.message(`down`, log_level.notice);
 }
 
 
-function shutdown(this:Server, signal:Signals) : void {
+function shutdown(this:Server, host:LoggerHost, signal:Signals) : void {
 	new Promise(resolve => {
 		this.getConnections((err, num) => {
-			logMessage(
+			host.logger.message(
 				`received ${ signal }, going down with ${ err === null ? num : '?' } connections`,
-				log_level.level_notice
+				log_level.notice
 			);
+
 			resolve();
 		});
 	}).then(() => this.close());
 }
 
 
-export function createServer(handler:handleRequest, port:number) : Server {
-	setLogThreshold(log_level.level_info);
-	logMessage(`going up on port ${ port }`, log_level.level_notice);
+export function createServer(config:ServerConfig) : Server {
+	const settings = getSettings(config);
+
+	settings.host.logger.message(`going up on port ${ settings.port }`, log_level.notice);
 
 	const server = new Server();
 
-	server.once(server_event.up, onUp.bind(server));
-	server.once(server_event.down, onDown.bind(server));
-	server.on(server_event.request, handler);
+	server.once(server_event.up, onUp.bind(server, settings.host));
+	server.once(server_event.down, onDown.bind(server, settings.host));
+	server.on(server_event.request, settings.handler);
 
-	onSignals([ 'SIGHUP', 'SIGINT', 'SIGTERM' ], shutdown.bind(server));
+	onSignals(settings.shutdownSignals, shutdown.bind(server, settings.host));
 
-	server.listen(port);
+	server.listen(settings.port);
 
 	return server;
 }

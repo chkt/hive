@@ -1,10 +1,11 @@
-import { createErrorContext, HttpContext, isErrorContext } from "../io/context";
+import { log_level } from "@chkt/onceupon/dist/level";
 import { State, Switch } from "@chkt/states/dist/state";
-import { sendTextReply } from "../io/reply";
-import { http_reply_code } from "../io/http";
 import { isErrorState } from "@chkt/states/dist/traverse";
+import { http_reply_code } from "../io/http";
+import { createErrorContext, HttpContext, isErrorContext } from "../io/context";
+import { sendTextReply } from "../io/reply";
 import { isControllerContext } from "../controller/controller";
-import { log_level, logMessage } from "../log/log";
+import { LoggerHost } from "./host";
 
 
 export const enum controller_boundary {
@@ -74,10 +75,11 @@ export async function respondError(
 }
 
 export async function logError(
+	host:LoggerHost,
 	context:HttpContext,
 	next:Switch<HttpContext>
 ) : Promise<State<HttpContext>> {
-	if (isErrorContext(context)) logMessage(context.error, log_level.level_warn);
+	if (isErrorContext(context)) host.logger.failure(context.error, log_level.warn);
 
 	return next.default(context);
 }
