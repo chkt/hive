@@ -60,7 +60,7 @@ type Routes = Route[];
 function createRouteExpression(path:string) : RouteExpression {
 	const opts = { sensitive : true };
 	const keys:pathToExpr.Key[] = [];
-	const expr = pathToExpr(path, keys, opts);
+	const expr = pathToExpr.pathToRegexp(path, keys, opts);
 
 	return { keys, expr };
 }

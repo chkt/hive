@@ -31,18 +31,18 @@
 	},
 
 	"devDependencies": {
-		"typescript": "^3.5",
-		"tslint": "^5.18",
-		"ts-node": "^8.3",
-		"mocha": "^6.2",
-		"nyc": "^14.1",
-		"@types/node": "^12.6",
-		"@types/mocha": "^5.2"
+		"typescript": "^3.8",
+		"tslint": "^6.1",
+		"ts-node": "^8.8",
+		"mocha": "^7.1",
+		"nyc": "^15.0",
+		"@types/node": "^13.9",
+		"@types/mocha": "^7.0"
 	},
 	"dependencies": {
 		"@chkt/states": "1.0.0-beta.1",
-		"@chkt/onceupon": "1.0.0-alpha.10",
-		"path-to-regexp": "^3.0",
-		"query-string": "^6.8"
+		"@chkt/onceupon": "1.0.0-alpha.16",
+		"path-to-regexp": "^6.1",
+		"query-string": "^6.11"
 	}
 }
