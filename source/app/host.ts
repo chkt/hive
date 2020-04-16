@@ -1,4 +1,4 @@
-import { Logger } from "@chkt/onceupon/dist";
+import { Logger } from "@chkt/onceupon";
 
 
 export interface LoggerHost {
