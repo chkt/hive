@@ -1,6 +1,6 @@
 import { StateDescriptionMap } from '@chkt/states/dist/create';
-
-import { HttpContext } from "../io/context";
+import { Injector } from '../inject/injector';
+import { HttpContext } from '../io/context';
 import {
 	controller_boundary,
 	noop,
@@ -9,11 +9,11 @@ import {
 	respondNoController,
 	respondRouteError,
 	endReply, respondNoRoute, logError
-} from "./requestTransforms";
-import { LoggerHost } from "./host";
+} from './requestTransforms';
+import { LoggingProvider } from './app';
 
 
-export function getResolver(host:LoggerHost) : StateDescriptionMap<HttpContext> {
+export function getResolver(injector:Injector<LoggingProvider>) : StateDescriptionMap<HttpContext> {
 	return {
 		before_route : {
 			transform : noop,
@@ -56,7 +56,7 @@ export function getResolver(host:LoggerHost) : StateDescriptionMap<HttpContext> 
 			targets : [{ id : 'log' }]
 		},
 		log : {
-			transform : logError.bind(null, host),
+			transform : logError.bind(null, injector),
 			targets : [{ id : 'send' }]
 		},
 		send : {
@@ -65,4 +65,3 @@ export function getResolver(host:LoggerHost) : StateDescriptionMap<HttpContext> 
 		}
 	};
 }
-

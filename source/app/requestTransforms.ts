@@ -1,11 +1,12 @@
-import { log_level } from "@chkt/onceupon/dist/level";
-import { State, Switch } from "@chkt/states/dist/state";
-import { isErrorState } from "@chkt/states/dist/traverse";
-import { http_reply_code } from "../io/http";
-import { createErrorContext, HttpContext, isErrorContext } from "../io/context";
-import { sendTextReply } from "../io/reply";
-import { isControllerContext } from "../controller/controller";
-import { LoggerHost } from "./host";
+import { log_level } from '@chkt/onceupon/dist/level';
+import { State, Switch } from '@chkt/states/dist/state';
+import { isErrorState } from '@chkt/states/dist/traverse';
+import { Injector } from '../inject/injector';
+import { http_reply_code } from '../io/http';
+import { createErrorContext, HttpContext, isErrorContext } from '../io/context';
+import { sendTextReply } from '../io/reply';
+import { isControllerContext } from '../controller/controller';
+import { LoggingProvider } from './app';
 
 
 export const enum controller_boundary {
@@ -75,11 +76,11 @@ export async function respondError(
 }
 
 export async function logError(
-	host:LoggerHost,
+	injector:Injector<LoggingProvider>,
 	context:HttpContext,
 	next:Switch<HttpContext>
 ) : Promise<State<HttpContext>> {
-	if (isErrorContext(context)) host.logger.failure(context.error, log_level.warn);
+	if (isErrorContext(context)) injector.get('logger').failure(context.error, log_level.error);
 
 	return next.default(context);
 }

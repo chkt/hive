@@ -1,16 +1,39 @@
 import * as assert from 'assert';
-import { describe, it } from "mocha";
+import { describe, it } from 'mocha';
 import { IncomingMessage, ServerResponse } from 'http';
 
-import { createState } from "@chkt/states/dist/state";
-import { bindContextToState, contextToState } from "@chkt/states/dist/traverse";
-import { createTransitionMap } from "@chkt/states/dist/create";
-import { modify } from "@chkt/states/dist/modify";
+import { createState } from '@chkt/states/dist/state';
+import { bindContextToState, contextToState } from '@chkt/states/dist/traverse';
+import { createTransitionMap } from '@chkt/states/dist/create';
+import { modify } from '@chkt/states/dist/modify';
 
-import { resolver } from "../../source/app/requestResolver";
-import { createHttpContext, HttpContext } from "../../source/io/context";
-import { Controller, ControllerContext } from "../../source/controller/controller";
+import { Injector } from '../../source/inject/injector';
+import { createHttpContext, HttpContext } from '../../source/io/context';
+import { Controller, ControllerContext } from '../../source/controller/controller';
+import { getResolver } from '../../source/app/requestResolver';
+import { LoggingProvider } from '../../source/app/app';
+import { Logger } from "@chkt/onceupon/dist";
 
+
+function mockInjector(msgs:string[] = []) : Injector<LoggingProvider> {
+	return {
+		get(id) {
+			if (id === 'logger') {
+				const logger:Partial<Logger> = {
+					failure(reason:any) {
+						msgs.push(reason);
+
+						return this as Logger;
+					}
+				};
+
+				return logger as Logger;
+			}
+
+			throw new Error();
+		}
+	}
+}
 
 function mockIncomingMessage(method:string = 'GET', url:string = '/foo') : IncomingMessage {
 	return Object.create(IncomingMessage.prototype, {
@@ -73,7 +96,7 @@ describe('resolver', () => {
 		const request = mockIncomingMessage();
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(resolver, {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(mockControllerContext(context, controller))),
 				targets : [{ id : 'after_route' }]
@@ -102,7 +125,7 @@ describe('resolver', () => {
 		const request = mockIncomingMessage('POST', '/bad');
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(resolver, {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(context)),
 				targets : [{ id : 'route_error' }]
@@ -127,7 +150,7 @@ describe('resolver', () => {
 		const request = mockIncomingMessage('POST', '/missing');
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(resolver, {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(context)),
 				targets : [{ id : 'no_route'}]
@@ -166,7 +189,7 @@ describe('resolver', () => {
 			error : new Error('bang')
 		}));
 
-		const resolve = bindContextToState(createTransitionMap(modify(resolver, {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(mockControllerContext(context, controller))),
 				targets : [{ id : 'after_route' }]
@@ -194,7 +217,7 @@ describe('resolver', () => {
 		const request = mockIncomingMessage();
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(resolver), 'before_route');
+		const resolve = bindContextToState(createTransitionMap(getResolver(mockInjector())), 'before_route');
 
 		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
 			id : 'after_send',

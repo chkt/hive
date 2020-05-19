@@ -1,9 +1,10 @@
 import Signals = NodeJS.Signals;
-import { AddressInfo } from "net";
-import { Server } from "http";
-import { log_level } from "@chkt/onceupon/dist/level";
-import { handleRequest } from "./app";
-import { LoggerHost } from "./host";
+import { AddressInfo } from 'net';
+import { Server } from 'http';
+import { Logger } from '@chkt/onceupon';
+import { log_level } from '@chkt/onceupon/dist/level';
+import { Injector } from '../inject/injector';
+import { handleRequest, LoggingProvider } from "./app";
 
 
 type handleSignals = (signal:Signals) => void;
@@ -11,7 +12,7 @@ type handleSignals = (signal:Signals) => void;
 interface ServerConfig {
 	readonly port? : number;
 	readonly shutdownSignals? : Signals[];
-	readonly host : LoggerHost;
+	readonly injector : Injector<LoggingProvider>;
 	readonly handler : handleRequest;
 }
 
@@ -54,22 +55,22 @@ function onSignals(signals:Signals[], handler:handleSignals) : void {
 }
 
 
-function onUp(this:Server, host:LoggerHost) : void {
+function onUp(this:Server, log:Logger) : void {
 	const address = this.address();
 	const port = isAddressInfo(address) ? address.port : address;
 
-	host.logger.message(`up, attached to port ${ port }`, log_level.notice);
+	log.message(`up, attached to port ${ port }`, log_level.notice);
 }
 
-function onDown(this:Server, host:LoggerHost) : void {
-	host.logger.message(`down`, log_level.notice);
+function onDown(this:Server, log:Logger) : void {
+	log.message(`down`, log_level.notice);
 }
 
 
-function shutdown(this:Server, host:LoggerHost, signal:Signals) : void {
+function shutdown(this:Server, log:Logger, signal:Signals) : void {
 	new Promise(resolve => {
 		this.getConnections((err, num) => {
-			host.logger.message(
+			log.message(
 				`received ${ signal }, going down with ${ err === null ? num : '?' } connections`,
 				log_level.notice
 			);
@@ -82,16 +83,17 @@ function shutdown(this:Server, host:LoggerHost, signal:Signals) : void {
 
 export function createServer(config:ServerConfig) : Server {
 	const settings = getSettings(config);
+	const log = settings.injector.get('logger');
 
-	settings.host.logger.message(`going up on port ${ settings.port }`, log_level.notice);
+	log.message(`going up on port ${ settings.port }`, log_level.notice);
 
 	const server = new Server();
 
-	server.once(server_event.up, onUp.bind(server, settings.host));
-	server.once(server_event.down, onDown.bind(server, settings.host));
+	server.once(server_event.up, onUp.bind(server, log));
+	server.once(server_event.down, onDown.bind(server, log));
 	server.on(server_event.request, settings.handler);
 
-	onSignals(settings.shutdownSignals, shutdown.bind(server, settings.host));
+	onSignals(settings.shutdownSignals, shutdown.bind(server, log));
 
 	server.listen(settings.port);
 
