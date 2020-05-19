@@ -1,11 +1,11 @@
 import { Context, State, Switch } from '@chkt/states/dist/state';
-import { contextToState } from "@chkt/states/dist/traverse";
+import { contextToState } from '@chkt/states/dist/traverse';
 
-import { Hash } from "../common/base/Hash";
-import { JsonConformHash } from "../common/base/Json";
-import { http_redirect_code, http_reply_code, httpMessage } from "../io/http";
-import { RouteMatch, RouteParams } from "../route/route";
-import { HttpContext, isHttpContext } from "../io/context";
+import { Hash } from '../common/base/Hash';
+import { JsonConformHash } from '../common/base/Json';
+import { http_redirect_code, http_reply_code, httpMessage } from '../io/http';
+import { HttpContext, isHttpContext } from '../io/context';
+import { RouteMatch, RouteParams } from '../route/route';
 
 
 interface CommonResult {
@@ -23,7 +23,7 @@ extends CommonResult {
 	readonly location : string;
 }
 
-interface StateResult
+export interface StateResult
 extends CommonResult {
 	readonly target : string;
 }
@@ -81,7 +81,7 @@ export function createController(
 	resolve:contextToState<ControllerContext>,
 	actions:ControllerActions,
 	defaultAction:string = ''
-) {
+) : Controller {
 	return {
 		resolve,
 		actions,
