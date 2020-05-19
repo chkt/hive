@@ -7,7 +7,9 @@
 		"outDir": "./dist",
 
 		"target": "es2018",
-		"lib": [],
+		"lib": [
+			"es2015.iterable"
+		],
 		"module": "commonjs",
 
 		"newLine": "LF",
