@@ -48,6 +48,7 @@ export enum http_request_header {
 	accept_charset = 'Accept-Charset',
 	accept_language = 'Accept-Language',
 	accept_mime = 'Accept',
+	authorization = 'Authorization',
 	content_length = 'Content-Length',
 	content_type = 'Content-Type',
 	cors_headers = 'Access-Control-Request-Headers',
