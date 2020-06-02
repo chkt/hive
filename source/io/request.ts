@@ -1,15 +1,19 @@
-import { IncomingMessage } from "http";
-import * as https from "https";
-
+import { IncomingMessage } from 'http';
+import * as https from 'https';
 import { Hash } from '../common/base/Hash';
-import { isEncoding, isMimeType, mime_encoding, MimeType } from "./mimeType";
-import { http_request_header } from "./http";
+import { isEncoding, isMimeType, mime_encoding, mime_type, MimeType } from './mimeType';
+import { http_request_header } from './http';
 
 
 const contentTypeExpr = /^([a-z]+\/[a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
 
+
+export function encodeContentType(mime:mime_type, charset?:mime_encoding) : string {
+	return mime + charset !== undefined ? `; charset=${ charset }` : '';
+}
+
 export function decodeContentType(header:string) : MimeType {
-	const match = header.match(contentTypeExpr);
+	const match = header.toLowerCase().match(contentTypeExpr);
 
 	if (match !== null) {
 		const mime = match[1];
@@ -18,7 +22,7 @@ export function decodeContentType(header:string) : MimeType {
 		if (isMimeType(mime) && isEncoding(char)) return [mime, char];
 	}
 
-	throw new Error();
+	throw new Error(`'${ header }' not a '${ http_request_header.content_type }'`);
 }
 
 export function getRemoteAddress(req:IncomingMessage) : string {
