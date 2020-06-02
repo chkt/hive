@@ -1,6 +1,7 @@
 export type MimeType = [mime_type, mime_encoding];
 
 export enum mime_type {
+	bytes = 'application/octet-stream',
 	json = 'application/json',
 	html = 'text/html',
 	text = 'text/plain'
