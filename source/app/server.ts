@@ -4,10 +4,9 @@ import { Server } from 'http';
 import { Logger } from '@chkt/onceupon';
 import { log_level } from '@chkt/onceupon/dist/level';
 import { Injector } from '../inject/injector';
-import { handleRequest, LoggingProvider } from "./app";
+import { handleRequest, LoggingProvider } from './app';
+import { onSignals } from './signals';
 
-
-type handleSignals = (signal:Signals) => void;
 
 interface ServerConfig {
 	readonly port? : number;
@@ -44,14 +43,6 @@ const enum server_event {
 
 function isAddressInfo(address:string|AddressInfo|null) : address is AddressInfo {
 	return typeof address === 'object';
-}
-
-function onSignal(signal:Signals, handler:handleSignals) : void {
-	process.once(signal, handler);
-}
-
-function onSignals(signals:Signals[], handler:handleSignals) : void {
-	for (const signal of signals) onSignal(signal, handler);
 }
 
 
