@@ -1,5 +1,5 @@
 import { createDecipheriv } from 'crypto';
-import { ReadonlyHash } from '../common/base/Hash';
+import { Hash, ReadonlyHash } from '../common/base/Hash';
 
 
 interface PlainConfigItem {
@@ -18,10 +18,40 @@ export interface ConfigKey {
 	readonly key : string;
 }
 
+type validate = (value:string, id:string) => any;
+
+interface Validator {
+	readonly alias? : string;
+	readonly validate? : validate;
+}
+
+type Validators = ReadonlyHash<Validator>;
+type ValidationValues<T extends Validators> = { readonly [ K in keyof T ] : T[K]['validate'] extends validate ? ReturnType<T[K]['validate']> : string };
+
+export interface Validation<T extends Validators> {
+	readonly valid : true;
+	readonly values : ValidationValues<T>
+}
+
+export interface ValidationFailure {
+	readonly valid : false;
+	readonly unreadable : ReadonlyArray<string>;
+	readonly invalided : ReadonlyArray<string>;
+	readonly validated : ReadonlyArray<string>;
+	readonly errors : ReadonlyHash<Error>;
+}
+
+export type ValidationResult<T extends Validators> = Validation<T> | ValidationFailure;
+
+export function isValidationFailure<T extends Validators>(result:ValidationResult<T>) : result is ValidationFailure {
+	return !result.valid;
+}
+
 export interface Config {
 	hasValue(id:string) : boolean;
 	isReadable(id:string) : boolean;
 	getValue(id:string) : string;
+	validate<T extends Validators>(fields:T) : ValidationResult<T>;
 }
 
 
@@ -78,6 +108,50 @@ export function createConfig(data:ConfigData, keys:ReadonlyHash<ConfigKey> = {})
 			const item = data[id];
 
 			return isEncryptedConfigItem(item) ? decrypt(id, item, keys) : item.value;
+		},
+		validate<T extends Validators>(fields:T) {
+			const missing:string[] = [];
+			const invalid:string[] = [];
+			const errors:Hash<Error> = {};
+			const values:Partial<ValidationValues<T>> = {};
+
+			for (const name of Object.keys(fields) as (keyof T extends string ? keyof T : never)[]) {
+				const field = fields[name];
+				const id = field.alias ?? name;
+
+				if (this.isReadable(id)) {
+					const value = this.getValue(id);
+					const validate = field.validate ?? (val => val);
+
+					try {
+						values[name] = validate(value, id);
+					}
+					catch (err) {
+						invalid.push(name);
+						errors[name] = err instanceof Error ? err : new Error(String(err))
+					}
+				}
+				else {
+					missing.push(name);
+					errors[name] = new Error(`${ id } missing`);
+				}
+			}
+
+			if (missing.length !== 0 || invalid.length !== 0) {
+				return {
+					valid : false,
+					unreadable : missing,
+					invalided : invalid,
+					validated : Object.keys(values),
+					errors
+				}
+			}
+			else {
+				return {
+					valid : true,
+					values : values as ValidationValues<T>
+				}
+			}
 		}
 	};
 }
