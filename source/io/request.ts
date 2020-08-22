@@ -8,6 +8,23 @@ import { http_request_header } from './http';
 const contentTypeExpr = /^([a-z]+\/[a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
 
 
+function capitalizeHeaderName(header:string) : string {
+	for (let index = header.indexOf('-'), l = header.length; index !== -1 && index + 1 < l; index = header.indexOf('-', index + 1)) {
+		header = header.slice(0, index + 1) + header.charAt(index + 1).toUpperCase() + header.slice(index + 2);
+	}
+
+	return header.charAt(0).toUpperCase() + header.slice(1);
+}
+
+export function decodeListHeader(header:string) : ReadonlyArray<string> {
+	return header !== '' ? header.split(',').map(value => capitalizeHeaderName(value.trim())) : [];
+}
+
+export function encodeListHeader(header:ReadonlyArray<string>) : string {
+	return header.join(', ');
+}
+
+
 export function encodeContentType(mime:mime_type, charset?:mime_encoding) : string {
 	return mime + charset !== undefined ? `; charset=${ charset }` : '';
 }
