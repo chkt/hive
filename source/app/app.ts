@@ -7,12 +7,18 @@ import { createHttpContext, HttpContext } from '../io/context';
 import { sendTextReply } from '../io/reply';
 
 
-export interface LoggingProvider extends Provider {
-	logger : Logger;
+export interface TimeSource {
+	now() : number;
+}
+
+export interface AppCommonProvider extends Provider {
+	readonly time : TimeSource;
+	readonly logger : Logger;
 }
 
 interface AppContext {
-	readonly injector : Injector<LoggingProvider>;
+	readonly common : AppCommonProvider;
+	readonly injector : Injector<AppCommonProvider>;
 	readonly resolve : contextToState<HttpContext>;
 }
 
@@ -24,13 +30,13 @@ async function onRequest(
 	request:IncomingMessage,
 	response:ServerResponse
 ) : Promise<void> {
-	const context = createHttpContext(request, response);
+	const context = createHttpContext(appContext.common.time.now(), request, response);
 	const res = await appContext.resolve(context);
 
 	if (isErrorState(res)) {
 		sendTextReply(response, http_reply_code.error);
 
-		appContext.injector.get('logger').failure(res.error);
+		appContext.common.logger.failure(res.error);
 	}
 }
 

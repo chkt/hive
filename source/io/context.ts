@@ -7,6 +7,7 @@ import { Hash, ReadonlyHash } from "../common/base/Hash";
 
 export interface HttpContext
 extends Context {
+	readonly timestamp : number;
 	readonly request : IncomingMessage;
 	readonly reply : ServerResponse;
 	readonly attributes : ReadonlyHash<string>;
@@ -30,11 +31,12 @@ export function isErrorContext<T extends Context>(context:T) : context is ErrorC
 
 
 export function createHttpContext(
+	timestamp:number,
 	request:IncomingMessage,
 	reply:ServerResponse,
 	attributes:Hash<string> = {}
 ) : HttpContext {
-	return { request, reply, attributes };
+	return { timestamp, request, reply, attributes };
 }
 
 export function createErrorContext<T extends Context>(context:T, error:string) : ErrorContext<T> {

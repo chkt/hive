@@ -5,14 +5,14 @@ import { Injector } from '../inject/injector';
 import { HttpContext } from '../io/context';
 import { RouteDescriptions } from './route';
 import { bindRoutes } from './routeTransforms';
-import { LoggingProvider } from '../app/app';
+import { AppCommonProvider } from '../app/app';
 
 
-type resolverFactory = (injector:Injector<LoggingProvider>) => StateDescriptionMap<HttpContext>;
+type resolverFactory = (injector:Injector<AppCommonProvider>) => StateDescriptionMap<HttpContext>;
 
 
 export function createResolver(
-	injector:Injector<LoggingProvider>,
+	injector:Injector<AppCommonProvider>,
 	createDescriptor:resolverFactory,
 	routes:RouteDescriptions
 ) : contextToState<HttpContext> {

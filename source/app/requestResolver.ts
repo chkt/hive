@@ -10,10 +10,10 @@ import {
 	respondRouteError,
 	endReply, respondNoRoute, logError
 } from './requestTransforms';
-import { LoggingProvider } from './app';
+import { AppCommonProvider } from './app';
 
 
-export function getResolver(injector:Injector<LoggingProvider>) : StateDescriptionMap<HttpContext> {
+export function getResolver(injector:Injector<AppCommonProvider>) : StateDescriptionMap<HttpContext> {
 	return {
 		before_route : {
 			transform : noop,

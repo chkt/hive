@@ -6,7 +6,7 @@ import { http_reply_code } from '../io/http';
 import { createErrorContext, HttpContext, isErrorContext } from '../io/context';
 import { sendTextReply } from '../io/reply';
 import { isControllerContext } from '../controller/controller';
-import { LoggingProvider } from './app';
+import { AppCommonProvider } from './app';
 
 
 export const enum controller_boundary {
@@ -76,7 +76,7 @@ export async function respondError(
 }
 
 export async function logError(
-	injector:Injector<LoggingProvider>,
+	injector:Injector<AppCommonProvider>,
 	context:HttpContext,
 	next:Switch<HttpContext>
 ) : Promise<State<HttpContext>> {

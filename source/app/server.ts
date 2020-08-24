@@ -5,14 +5,14 @@ import * as https from 'https';
 import { Logger } from '@chkt/onceupon';
 import { log_level } from '@chkt/onceupon/dist/level';
 import { Injector } from '../inject/injector';
-import { handleRequest, LoggingProvider } from './app';
+import { handleRequest, AppCommonProvider } from './app';
 import { onSignals } from './signals';
 
 
 interface HttpServerConfig {
 	readonly port? : number;
 	readonly shutdownSignals? : Signals[];
-	readonly injector : Injector<LoggingProvider>;
+	readonly injector : Injector<AppCommonProvider>;
 	readonly handler : handleRequest;
 }
 
