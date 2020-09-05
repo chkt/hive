@@ -1,4 +1,4 @@
-import { describe, it } from "mocha";
+import { describe } from "mocha";
 import * as assert from "assert";
 
 import { IncomingMessage, ServerResponse } from 'http';
@@ -7,23 +7,30 @@ import { contextToState } from '@chkt/states/dist/traverse';
 import { Logger } from '@chkt/onceupon';
 import { Injector } from '../../source/inject/injector';
 import { HttpContext } from '../../source/io/context';
-import { createApp, LoggingProvider } from '../../source/app/app';
+import { createApp, AppCommonProvider } from '../../source/app/app';
 
 
-function mockInjector(msgs:string[] = []) : Injector<LoggingProvider> {
+function mockCommonProvider(msgs:string[] = []) : AppCommonProvider {
+	const logger:Partial<Logger> = {
+		failure(reason) {
+			msgs.push(reason instanceof Error ? reason.message : reason);
+
+			return this as Logger;
+		}
+	};
+
+	return {
+		logger : logger as Logger,
+		time : {
+			now() { return 0; }
+		}
+	};
+}
+
+function mockInjector(provider:AppCommonProvider) : Injector<AppCommonProvider> {
 	return {
 		get(id) {
-			if (id === 'logger') {
-				const logger:Partial<Logger> = {
-					failure(reason) {
-						msgs.push(reason instanceof Error ? reason.message : reason);
-
-						return this as Logger;
-					}
-				}
-
-				return logger as Logger;
-			}
+			if (id in provider) return provider[id];
 
 			throw new Error();
 		}
@@ -48,8 +55,10 @@ function mockServerResponse(props:object = {}) : ServerResponse {
 
 describe('createApp', () => {
 	it("should return a request listener", () => {
+		const provider = mockCommonProvider();
 		const app = createApp({
-			injector : mockInjector(),
+			common : provider,
+			injector : mockInjector(provider),
 			resolve : mockResolver()
 		});
 
@@ -57,8 +66,10 @@ describe('createApp', () => {
 	});
 
 	it("should resolve a noop request", () => {
+		const provider = mockCommonProvider();
 		const app = createApp({
-			injector : mockInjector(),
+			common : provider,
+			injector : mockInjector(provider),
 			resolve : mockResolver()
 		});
 
@@ -84,8 +95,10 @@ describe('createApp', () => {
 			}
 		});
 
+		const provider = mockCommonProvider(messages);
 		const app = createApp({
-			injector : mockInjector(messages),
+			common : provider,
+			injector : mockInjector(provider),
 			resolve : mockResolver({
 				error : new Error('foo')
 			})
