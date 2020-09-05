@@ -18,6 +18,7 @@ export enum http_reply_code {
 	no_perms = 403,
 	not_found = 404,
 	no_method = 405,
+	mismatch = 406,
 	no_length = 411,
 	too_big = 413,
 	too_many = 429,
@@ -40,7 +41,7 @@ export const httpMessage:ReadonlyMap<number, string> = new Map([
 	[301, 'Moved Permanently'], [302, 'Found'], [303, 'See Other'], [307, 'Temporary Redirect'],
 	[308, 'Permanent Redirect'],
 	[400, 'Bad Request'], [401, 'Unauthorized'], [403, 'Forbidden'], [404, 'Not Found'],
-	[405, 'Method Not Allowed'], [411, 'Length Required'], [413, 'Payload Too Large'], [429, 'Too Many Requests'],
+	[405, 'Method Not Allowed'], [406, 'Not Acceptable'], [411, 'Length Required'], [413, 'Payload Too Large'], [429, 'Too Many Requests'],
 	[500, 'Internal Server Error'], [503, 'Service Unavailable']
 ]);
 
