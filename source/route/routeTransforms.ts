@@ -1,8 +1,7 @@
-import { State, Switch } from "@chkt/states/dist/state";
-import { transform } from "@chkt/states/dist/transition";
-
-import { createRouter, route_error_msg, RouteDescriptions, routeResolver } from "./route";
-import { HttpContext } from "../io/context";
+import { State, Switch } from '@chkt/states/dist/state';
+import { transform } from '@chkt/states/dist/transition';
+import { createErrorContext, HttpContext } from '../io/context';
+import { createRouter, route_error_msg, RouteDescriptions, routeResolver } from './route';
 
 
 export async function resolveRoute(
@@ -14,8 +13,10 @@ export async function resolveRoute(
 		return next.success(router(context));
 	}
 	catch (err) {
-		if (err.message === route_error_msg.no_match) return next.named('no_route', context);
-		else return next.named('error', context);
+		return next.named(
+			err.message === route_error_msg.no_match ? 'no_route' : 'error',
+			createErrorContext(context, err.message)
+		);
 	}
 }
 
