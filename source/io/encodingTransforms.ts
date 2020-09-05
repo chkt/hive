@@ -3,6 +3,7 @@ import { State, Switch } from "@chkt/states/dist/state";
 import { ControllerContext } from "../controller/controller";
 import { decodeContentType, getBody } from "./request";
 import { mime_encoding, mime_type } from "./mimeType";
+import { createHttpBodyContext } from "./context";
 
 
 const enum states {
@@ -45,7 +46,7 @@ export async function resolveRequestEncoding(
 		if (mapping.mime === type) return next.named(mapping.state, context);
 	}
 
-	return next.failure(context);
+	return next.named('mime_mismatch', context);
 }
 
 export async function decodeJsonRequest(
@@ -56,10 +57,7 @@ export async function decodeJsonRequest(
 		const json = await getBody(context.request);
 		const data = JSON.parse(json.toString());
 
-		return next.default({
-			...context,
-			payload : data
-		});
+		return next.default(createHttpBodyContext(context, data));
 	}
 	catch (err) {
 		return next.failure(context);
