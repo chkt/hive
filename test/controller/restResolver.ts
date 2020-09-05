@@ -1,19 +1,20 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
-import { IncomingMessage, ServerResponse } from 'http';
 
-import { bindContextToState, contextToState, isErrorState } from "@chkt/states/dist/traverse";
-import { createTransitionMap } from "@chkt/states/dist/create";
-import { resolver, startId } from "../../source/controller/restResolver";
-import { Hash } from "../../source/common/base/Hash";
+import { IncomingMessage, ServerResponse } from 'http';
+import { createTransitionMap } from '@chkt/states/dist/create';
+import { bindContextToState, contextToState, isErrorState } from '@chkt/states/dist/traverse';
+import { Hash } from '../../source/common/base/Hash';
+import { http_method, http_reply_code } from '../../source/io/http';
+import { controller_action, reply_status } from '../../source/controller/restTransforms';
+import { resolver, startId } from '../../source/controller/restResolver';
 import {
 	ControllerActions,
 	ControllerContext,
 	createReturnReply,
 	createReturnState,
 	state_result_type
-} from "../../source/controller/controller";
-import { http_method, http_reply_code } from "../../source/io/http";
+} from '../../source/controller/controller';
 
 
 type cb = (cb?:Buffer|Error) => void;
@@ -31,7 +32,7 @@ function mockIncomingMessage(
 	headers:Hash<string> = {},
 	body:string = ''
 ) {
-	function setTimeout(timeout:number, cb:() => void) {
+	function setTimeout() {
 		return;
 	}
 
@@ -84,6 +85,7 @@ function mockControllerContext(
 	actions:ControllerActions = {}
 ) : ControllerContext {
 	return {
+		timestamp : 123,
 		request,
 		reply,
 		attributes : {},
@@ -118,7 +120,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'list' },
+				attributes : { action : controller_action.list },
+				controller : { ...context.controller, selectedAction : controller_action.list },
 				view : [{ id : 'foo'}, { id : 'bar' }]
 			}
 		});
@@ -151,7 +154,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'read' },
+				attributes : { action : controller_action.read },
+				controller : { ...context.controller, selectedAction : controller_action.read },
 				view : { id : 'foo' }
 			}
 		});
@@ -187,8 +191,9 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'create' },
-				payload : { id : "foo"}, // TODO: do not store data in arbitrary properties
+				requestBody : { id : 'foo' },
+				attributes : { action : controller_action.create },
+				controller : {...context.controller, selectedAction : controller_action.create },
 				view : { id : "bar" }
 			}
 		});
@@ -224,8 +229,9 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
+				requestBody : { id : 'foo' },
+				attributes : { action : controller_action.update },
 				controller : { ...context.controller, selectedAction : 'update' },
-				payload : { id : 'foo' },
 				view : { id : 'bar' }
 			}
 		});
@@ -255,7 +261,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'delete' }
+				attributes : { action : controller_action.delete },
+				controller : { ...context.controller, selectedAction : controller_action.delete }
 			}
 		});
 
@@ -285,38 +292,78 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
-			context
+			context : {
+				...context,
+				attributes : { status : reply_status.request_unsupported },
+				view : { status : 'Bad Request' }
+			}
 		});
 
 		assert.deepStrictEqual(messages, {
-			code : 405,
-			message : 'Method Not Allowed',
+			code : 400,
+			message : 'Bad Request',
 			headers : {
-				'Content-Type' : 'text/plain; charset=utf-8',
-				'Content-Length' : '24',
-				'Allow' : 'GET, HEAD'
+				'Content-Type' : 'application/json; charset=utf-8',
+				'Content-Length' : '24'
 			},
-			body : '405 - Method Not Allowed',
+			body : '{"status":"Bad Request"}',
 		});
-		// TODO: reply mime should uniform
 	});
 
-	it('should handle invalid encodings', async () => {
+	it('should handle unimplemented request methods', async () => {
 		const messages = {};
-		const request = mockIncomingMessage('PUT', '/collection/1', {
-			'Content-Type' : 'text/plain; charset=utf-8',
-			'Content-Length' : '3'
-		}, 'foo');
+		const request = mockIncomingMessage(http_method.put, '/collection/1', {
+			'content-type' : 'application/json; charset=utf-8',
+			'content-length' : '12'
+		}, '{"id":"foo"}');
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
-		const context = mockControllerContext(request, reply, resolve, { id : '1' });
+		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
+			read : async ctx => createReturnReply(http_reply_code.ok, ctx),
+			create : async ctx => createReturnReply(http_reply_code.ok, ctx)
+		});
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'update' },
+				attributes : { action : controller_action.update, status : reply_status.action_unavailable },
+				view : { status : 'Method Not Allowed' }
+			}
+		});
+
+		assert.deepStrictEqual(messages, {
+			body : '{"status":"Method Not Allowed"}',
+			code : 405,
+			headers : {
+				'Content-Length' : '31',
+				'Content-Type' : 'application/json; charset=utf-8',
+				'Allow' : 'GET, HEAD, POST'
+			},
+			message : 'Method Not Allowed'
+		});
+	});
+
+	it('should handle invalid encodings', async () => {
+		const messages = {};
+		const request = mockIncomingMessage('PUT', '/collection/1', {
+			'content-type' : 'text/plain; charset=utf-8',
+			'content-length' : '3'
+		}, 'foo');
+		const reply = mockServerResponse(messages);
+
+		const resolve = bindContextToState(createTransitionMap(resolver), startId);
+		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
+			update : async ctx => createReturnReply(200, ctx)
+		});
+
+		assert.deepStrictEqual(await resolve(context), {
+			id : 'end',
+			context : {
+				...context,
+				attributes : { action : controller_action.update, status : reply_status.mime_unsupported },
+				controller : { ...context.controller, selectedAction : controller_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -342,13 +389,16 @@ describe('resolver', () => {
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
-		const context = mockControllerContext(request, reply, resolve, { id : '1'});
+		const context = mockControllerContext(request, reply, resolve, { id : '1'}, {
+			update : async ctx => createReturnReply(http_reply_code.ok, ctx)
+		});
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'update' },
+				attributes : { action : controller_action.update, status : reply_status.request_malformed },
+				controller : { ...context.controller, selectedAction : controller_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -381,8 +431,9 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'update' },
-				payload : { id : 'foo' },
+				requestBody : { id : 'foo'},
+				attributes : { action : controller_action.update, status : reply_status.request_malformed },
+				controller : { ...context.controller, selectedAction : controller_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -412,7 +463,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				controller : { ...context.controller, selectedAction : 'read' },
+				attributes : { action : controller_action.read, status : reply_status.resource_missing },
+				controller : { ...context.controller, selectedAction : controller_action.read },
 				view : { status : 'Not Found' }
 			}
 		});
@@ -434,14 +486,15 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
-			read : async ctx => { throw new Error('bang'); }
+			read : async () => { throw new Error('bang'); }
 		});
 		const state = await resolve(context);
 
 		assert.strictEqual(state.id, 'action');
 		assert.deepStrictEqual(state.context, {
 			...context,
-			controller : { ...context.controller, selectedAction : 'read' }
+			attributes : { action : controller_action.read },
+			controller : { ...context.controller, selectedAction : controller_action.read }
 		});
 		assert(isErrorState(state));
 	});
@@ -463,9 +516,10 @@ describe('resolver', () => {
 		assert.strictEqual(state.id, 'encode_json');
 		assert.deepStrictEqual(state.context, {
 			...context,
-			controller : { ...context.controller, selectedAction : 'read' },
+			attributes : { action : controller_action.read },
+			controller : { ...context.controller, selectedAction : controller_action.read },
 			// @ts-ignore
-			view : { id : 1n}
+			view : { id : 1n }
 		});
 		assert(isErrorState(state));
 	});

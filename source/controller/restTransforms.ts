@@ -1,8 +1,7 @@
 import { State, Switch } from '@chkt/states/dist/state';
-
-import { applyControllerAction, ControllerContext } from "./controller";
-import { http_method, http_reply_code, httpMessage } from "../io/http";
-import { sendTextReply } from "../io/reply";
+import { http_method, http_reply_code, http_response_header, httpMessage } from '../io/http';
+import { sendTextReply, setResponseStatus } from '../io/reply';
+import { applyControllerAction, ControllerContext } from './controller';
 
 
 export const enum controller_action {
@@ -12,6 +11,32 @@ export const enum controller_action {
 	update = 'update',
 	delete = 'delete'
 }
+
+export const enum reply_status {
+	action_unavailable = 'action unavailable',
+	auth_failed = 'authentication failed',
+	auth_malformed = 'authentication required',
+	error = 'processing error',
+	mime_unsupported = 'representation unsupported',
+	ok = 'ok',
+	request_malformed = 'request malformed',
+	request_unsupported = 'request unsupported',
+	resource_missing = 'resource not found',
+	service_unavailable = 'service unavailable'
+}
+
+const replyMap:Map<reply_status, http_reply_code> = new Map([
+	[ reply_status.action_unavailable, http_reply_code.no_method ],
+	[ reply_status.auth_failed, http_reply_code.no_auth ],
+	[ reply_status.auth_malformed, http_reply_code.no_auth ],
+	[ reply_status.error, http_reply_code.error ],
+	[ reply_status.mime_unsupported, http_reply_code.malformed ],
+	[ reply_status.ok, http_reply_code.ok ],
+	[ reply_status.request_malformed, http_reply_code.malformed ],
+	[ reply_status.request_unsupported, http_reply_code.malformed ],
+	[ reply_status.resource_missing, http_reply_code.not_found ],
+	[ reply_status.service_unavailable, http_reply_code.no_service ],
+]);
 
 interface MethodMapping {
 	method : http_method;
@@ -31,6 +56,11 @@ const map:MethodMappings = [
 ];
 
 
+export function codeOfStatus(status:string|undefined) : http_reply_code {
+	return replyMap.get(status as reply_status) ?? http_reply_code.error;
+}
+
+
 export async function resolveRequestMethod(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
@@ -41,50 +71,49 @@ export async function resolveRequestMethod(
 	for (const mapping of map) {
 		if (mapping.method !== method || mapping.id !== hasId) continue;
 
-		return next.named(mapping.action, {
+		return next.success({
 			...context,
-			controller : applyControllerAction(context.controller, mapping.action)
+			attributes : {
+				...context.attributes,
+				action : mapping.action
+			}
 		});
 	}
 
 	return next.failure(context);
 }
 
-export async function respondBadRequest(
+export async function filterAction(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
-	const code = http_reply_code.malformed;
-	const message = httpMessage.get(code) as string;
+	const action = context.attributes.action;
 
-	context.reply.writeHead(code, message);
+	if (action in context.controller.actions) {
+		return next.named(action, {
+			...context,
+			controller : applyControllerAction(context.controller, action)
+		});
+	}
 
-	return next.failure({
+	return next.failure(context);
+}
+
+export async function applyReplyStatus(
+	status:string,
+	context:ControllerContext,
+	next:Switch<ControllerContext>
+) : Promise<State<ControllerContext>> {
+	return next.success({
 		...context,
-		view : {
-			status : message
+		attributes : {
+			...context.attributes,
+			status
 		}
 	});
 }
 
-export async function respondNotFound(
-	context:ControllerContext,
-	next:Switch<ControllerContext>
-) : Promise<State<ControllerContext>> {
-	const code = http_reply_code.not_found;
-	const message = httpMessage.get(code);
-
-	context.reply.writeHead(code, message);
-
-	return next.failure({
-		...context,
-		view : {
-			status : message as string
-		}
-	});
-}
-
-export async function respondBadMethod(
+export async function resolveMethods(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -102,8 +131,36 @@ export async function respondBadMethod(
 		}
 	}
 
-	context.reply.setHeader('Allow', allow.join(', '));
-	sendTextReply(context.reply, http_reply_code.no_method);
+	context.reply.setHeader(http_response_header.allowed_methods, allow.join(', '));
+
+	return next.failure({
+		...context,
+		attributes : {
+			...context.attributes,
+			status : reply_status.action_unavailable
+		}
+	});
+}
+
+export async function respondStatus(
+	context:ControllerContext,
+	next:Switch<ControllerContext>
+) : Promise<State<ControllerContext>> {
+	const code = codeOfStatus(context.attributes.status);
+
+	setResponseStatus(context.reply, code);
+
+	return next.success({
+		...context,
+		view : { status : httpMessage.get(code) ?? 'unresolved' }
+	});
+}
+
+export async function respondError(
+	context:ControllerContext,
+	next:Switch<ControllerContext>
+) : Promise<State<ControllerContext>> {
+	sendTextReply(context.reply, http_reply_code.error);
 
 	return next.failure(context);
 }
