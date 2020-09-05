@@ -1,14 +1,17 @@
-import { IncomingMessage } from 'http';
+import * as http from 'http';
 import * as https from 'https';
 import { Hash } from '../common/base/Hash';
 import { isEncoding, isMimeType, mime_encoding, mime_type, MimeType } from './mimeType';
+import { ip_port } from './ip';
 import { http_request_header } from './http';
 
 
-const contentTypeExpr = /^([a-z]+\/[a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
+const contentTypeExpr = /^([a-z]+\/[-a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
 
 
 function capitalizeHeaderName(header:string) : string {
+	header = header.toLowerCase();
+
 	for (let index = header.indexOf('-'), l = header.length; index !== -1 && index + 1 < l; index = header.indexOf('-', index + 1)) {
 		header = header.slice(0, index + 1) + header.charAt(index + 1).toUpperCase() + header.slice(index + 2);
 	}
@@ -24,9 +27,8 @@ export function encodeListHeader(header:ReadonlyArray<string>) : string {
 	return header.join(', ');
 }
 
-
 export function encodeContentType(mime:mime_type, charset?:mime_encoding) : string {
-	return mime + charset !== undefined ? `; charset=${ charset }` : '';
+	return mime + (charset !== undefined ? `; charset=${ charset }` : '');
 }
 
 export function decodeContentType(header:string) : MimeType {
@@ -42,7 +44,7 @@ export function decodeContentType(header:string) : MimeType {
 	throw new Error(`'${ header }' not a '${ http_request_header.content_type }'`);
 }
 
-export function getRemoteAddress(req:IncomingMessage) : string {
+export function getRemoteAddress(req:http.IncomingMessage) : string {
 	const forwarded = req.headers[ http_request_header.proxy_forwarded_for.toLowerCase() ];
 	const remote = req.connection.remoteAddress;
 
@@ -55,7 +57,7 @@ export function getRemoteAddress(req:IncomingMessage) : string {
 	return ips.length !== 0 ? ips[0] : '0.0.0.0';
 }
 
-export async function getBody(req:IncomingMessage, timeout:number = 10000) : Promise<Buffer> {
+export async function getBody(req:http.IncomingMessage, timeout:number = 10000) : Promise<Buffer> {
 	return new Promise((resolve, reject) => {
 		if (!('content-length' in req.headers)) reject('malformed');
 
@@ -69,8 +71,6 @@ export async function getBody(req:IncomingMessage, timeout:number = 10000) : Pro
 
 		req.on('data', (data:Buffer) : void => {
 			const bytes = data.byteLength;
-
-			// for (const val of data.values()) console.debug(val);
 
 			if (index + bytes > len) reject('overflow');
 
@@ -89,9 +89,9 @@ export async function getBody(req:IncomingMessage, timeout:number = 10000) : Pro
 	});
 }
 
-export function send(props:object, headers:Hash<string> = {}, body?:Buffer) : Promise<IncomingMessage> {
+export function send(props:https.RequestOptions, headers:Hash<string> = {}, body?:Buffer) : Promise<http.IncomingMessage> {
 	return new Promise((resolve, reject) => {
-		const request = https.request(props);
+		const request = (props.port ?? ip_port.https) === ip_port.http ? http.request(props) : https.request(props);
 
 		request.on('response', resolve);
 		request.on('error', reject);
