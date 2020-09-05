@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { log_level } from '@chkt/onceupon/dist';
 import { Injector } from '../inject/injector';
 import { onSignals } from '../app/signals';
-import { LoggingProvider } from '../app/app';
+import { AppCommonProvider } from '../app/app';
 
 
 interface ScheduleContext {
@@ -17,7 +17,7 @@ type scheduleHandler = (context:ScheduleContext) => Promise<void>;
 interface ScheduleConfig {
 	readonly name? : string;
 	readonly shutdownSignals? : ReadonlyArray<Signals>;
-	readonly injector : Injector<LoggingProvider>;
+	readonly injector : Injector<AppCommonProvider>;
 	readonly handler : scheduleHandler;
 	readonly interval? : number;
 	readonly offset? : number;

@@ -4,24 +4,34 @@ import { describe, it } from 'mocha';
 import { createLogger, log_level } from '@chkt/onceupon';
 import { tokensToString } from '@chkt/onceupon/dist/format';
 import { Injector } from '../../source/inject/injector';
-import { LoggingProvider } from '../../source/app/app';
+import { AppCommonProvider } from '../../source/app/app';
 import { createSchedule } from '../../source/schedule/schedule';
 
 
-function mockInjector(msg:string[] = []) : Injector<LoggingProvider> {
+function mockCommonProvider(msgs:string[] = []) : AppCommonProvider {
 	const logger = createLogger({
 		threshold : log_level.debug,
 		time : () => {
 			return Promise.resolve((Date.now() % 1000).toString().padStart(4, '0'));
 		},
 		handle : async data => {
-			msg.push(tokensToString(data.tokens))
+			msgs.push(tokensToString(data.tokens))
 		}
 	});
 
 	return {
+		logger,
+		time : {
+			now() { return 0; }
+		}
+	};
+}
+
+function mockInjector(provider:AppCommonProvider) : Injector<AppCommonProvider> {
+	return {
 		get(id) {
-			if (id === 'logger') return logger;
+			if (id in provider) return provider[id];
+
 			throw new Error();
 		}
 	}
@@ -74,7 +84,7 @@ function assertMessages(
 describe('createSchedule', () => {
 	it('should create a schedule', () => {
 		const schedule = createSchedule({
-			injector : mockInjector(),
+			injector : mockInjector(mockCommonProvider()),
 			handler : async () => undefined,
 			maxCount : 0
 		});
@@ -86,7 +96,7 @@ describe('createSchedule', () => {
 
 	it('should run a task at a defined interval', async () => {
 		const msgs:string[] = [];
-		const injector = mockInjector(msgs);
+		const injector = mockInjector(mockCommonProvider(msgs));
 
 		await delayUntil(1000);
 
@@ -119,7 +129,7 @@ describe('createSchedule', () => {
 
 	it('should run a task and stop when told to', async () => {
 		const msgs:string[] = [];
-		const injector = mockInjector(msgs);
+		const injector = mockInjector(mockCommonProvider(msgs));
 
 		await delayUntil(1000);
 
@@ -154,7 +164,7 @@ describe('createSchedule', () => {
 
 	it('should capture throwing handlers', async () => {
 		const msgs:string[] = [];
-		const injector = mockInjector(msgs);
+		const injector = mockInjector(mockCommonProvider(msgs));
 
 		await delayUntil(1000);
 
