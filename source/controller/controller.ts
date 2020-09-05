@@ -60,6 +60,7 @@ export function createReturnState(target:string, context:ControllerContext) : St
 
 
 export const enum state_result_type {
+	error = 'error',
 	malformed = 'malformed',
 	not_found = 'not_found',
 	no_action = 'no_action',
