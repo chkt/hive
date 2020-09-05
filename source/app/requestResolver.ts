@@ -3,12 +3,14 @@ import { Injector } from '../inject/injector';
 import { HttpContext } from '../io/context';
 import {
 	controller_boundary,
-	noop,
 	controllerTransform,
+	endReply,
+	logError,
+	noop,
 	respondError,
 	respondNoController,
-	respondRouteError,
-	endReply, respondNoRoute, logError
+	respondNoRoute,
+	respondRouteError
 } from './requestTransforms';
 import { AppCommonProvider } from './app';
 
@@ -43,6 +45,7 @@ export function getResolver(injector:Injector<AppCommonProvider>) : StateDescrip
 			transform : controllerTransform,
 			targets : [
 				{ id : 'send', name : controller_boundary.success },
+				{ id : 'log', name : controller_boundary.notice },
 				{ id : 'no_controller', name : controller_boundary.no_controller },
 				{ id : 'error', name : controller_boundary.error }
 			]

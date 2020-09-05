@@ -11,6 +11,7 @@ import { AppCommonProvider } from './app';
 
 export const enum controller_boundary {
 	success = 'success',
+	notice = 'notice',
 	error = 'error',
 	no_controller = 'no_controller'
 }
@@ -33,6 +34,7 @@ export async function controllerTransform(
 	const state = await context.controller.resolve(context);
 
 	if (isErrorState(state)) return next.failure(createErrorContext(context, state.error.message));
+	else if (isErrorContext(state.context)) return next.named(controller_boundary.notice, state.context);
 	else return next.success(state.context);
 }
 
@@ -54,7 +56,10 @@ export async function respondRouteError(
 ) : Promise<State<HttpContext>> {
 	const request = context.request;
 
-	return next.failure(createErrorContext(context, `bad route ${ request.method } ${ request.url }`));
+	return next.failure(isErrorContext(context) ?
+		context :
+		createErrorContext(context, `bad route ${ request.method } ${ request.url }`)
+	);
 }
 
 export async function respondNoController(

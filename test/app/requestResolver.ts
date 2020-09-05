@@ -11,24 +11,31 @@ import { Injector } from '../../source/inject/injector';
 import { createHttpContext, HttpContext } from '../../source/io/context';
 import { Controller, ControllerContext } from '../../source/controller/controller';
 import { getResolver } from '../../source/app/requestResolver';
-import { LoggingProvider } from '../../source/app/app';
+import { AppCommonProvider } from '../../source/app/app';
 import { Logger } from "@chkt/onceupon/dist";
 
 
-function mockInjector(msgs:string[] = []) : Injector<LoggingProvider> {
+function mockCommonProvider(msgs:string[] = []) : AppCommonProvider {
+	const logger:Partial<Logger> = {
+		failure(reason) {
+			msgs.push(reason instanceof Error ? reason.message : reason);
+
+			return this as Logger;
+		}
+	};
+
+	return {
+		logger : logger as Logger,
+		time : {
+			now() { return 0; }
+		}
+	};
+}
+
+function mockInjector(provider:AppCommonProvider) : Injector<AppCommonProvider> {
 	return {
 		get(id) {
-			if (id === 'logger') {
-				const logger:Partial<Logger> = {
-					failure(reason:any) {
-						msgs.push(reason);
-
-						return this as Logger;
-					}
-				};
-
-				return logger as Logger;
-			}
+			if (id in provider) return provider[id];
 
 			throw new Error();
 		}
@@ -96,16 +103,17 @@ describe('resolver', () => {
 		const request = mockIncomingMessage();
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector(mockCommonProvider())), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(mockControllerContext(context, controller))),
 				targets : [{ id : 'after_route' }]
 			}
 		})), 'before_route');
 
-		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
+		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
 			context : {
+				timestamp : 123,
 				request,
 				reply,
 				attributes : {},
@@ -125,16 +133,17 @@ describe('resolver', () => {
 		const request = mockIncomingMessage('POST', '/bad');
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector(mockCommonProvider())), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(context)),
 				targets : [{ id : 'route_error' }]
 			}
 		})), 'before_route');
 
-		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
+		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
 			context : {
+				timestamp : 123,
 				request,
 				reply,
 				attributes : {},
@@ -150,16 +159,17 @@ describe('resolver', () => {
 		const request = mockIncomingMessage('POST', '/missing');
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector(mockCommonProvider())), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(context)),
 				targets : [{ id : 'no_route'}]
 			}
 		})), 'before_route');
 
-		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
+		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
 			context : {
+				timestamp : 123,
 				request,
 				reply,
 				error : 'no route POST /missing',
@@ -189,16 +199,17 @@ describe('resolver', () => {
 			error : new Error('bang')
 		}));
 
-		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector()), {
+		const resolve = bindContextToState(createTransitionMap(modify(getResolver(mockInjector(mockCommonProvider())), {
 			route : {
 				transform : (context, next) => Promise.resolve(next.default(mockControllerContext(context, controller))),
 				targets : [{ id : 'after_route' }]
 			}
 		})), 'before_route');
 
-		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
+		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
 			context : {
+				timestamp : 123,
 				request,
 				reply,
 				attributes : {},
@@ -217,11 +228,12 @@ describe('resolver', () => {
 		const request = mockIncomingMessage();
 		const reply = mockServerResponse(messages);
 
-		const resolve = bindContextToState(createTransitionMap(getResolver(mockInjector())), 'before_route');
+		const resolve = bindContextToState(createTransitionMap(getResolver(mockInjector(mockCommonProvider()))), 'before_route');
 
-		assert.deepStrictEqual(await resolve(createHttpContext(request, reply)), {
+		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
 			context : {
+				timestamp : 123,
 				request,
 				reply,
 				attributes : {},
