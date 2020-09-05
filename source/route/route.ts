@@ -1,10 +1,9 @@
-import * as uri from "url";
+import * as uri from 'url';
 import * as pathToExpr from 'path-to-regexp';
 import * as queryString from 'query-string';
-
-import { HttpContext } from "../io/context";
-import { Controller, ControllerContext, createControllerContext } from "../controller/controller";
-import { Hash } from "../common/base/Hash";
+import { Hash } from '../common/base/Hash';
+import { HttpContext } from '../io/context';
+import { Controller, ControllerContext, createControllerContext } from '../controller/controller';
 
 
 export const enum route_error_msg {
@@ -16,6 +15,7 @@ export type RouteAttributes = Hash<string>;
 export type RouteParams = Hash<string|string[]|null>;
 
 export interface RouteData {
+	readonly match : RouteExpression;
 	readonly path : string;
 	readonly params : RouteParams;
 }
@@ -47,6 +47,7 @@ export type RouteDescriptions = RouteDescription[];
 
 interface RouteExpression {
 	readonly expr : RegExp;
+	readonly combine : pathToExpr.PathFunction;
 	readonly keys : pathToExpr.Key[];
 }
 
@@ -61,8 +62,9 @@ function createRouteExpression(path:string) : RouteExpression {
 	const opts = { sensitive : true };
 	const keys:pathToExpr.Key[] = [];
 	const expr = pathToExpr.pathToRegexp(path, keys, opts);
+	const combine = pathToExpr.compile(path, opts);
 
-	return { keys, expr };
+	return { keys, expr, combine };
 }
 
 function createRoute(desc:RouteDescription) : Route {
@@ -117,6 +119,7 @@ function resolveContext(routes:Routes, context:HttpContext) : ControllerContext 
 	const match = matchRoutes(routes, pathname as string);
 
 	const resolution = match.route.resolve({
+		match : match.route.parser,
 		path : match.path,
 		params : query !== null ? { ...queryString.parse(query) as RouteParams, ...match.params } : match.params
 	});
