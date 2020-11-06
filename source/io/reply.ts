@@ -24,15 +24,19 @@ export function setResponseStatus(rep:ServerResponse, code:http_reply_code, head
 	if (headers !== undefined) setHeaders(rep, headers);
 }
 
-export function sendTextReply(rep:ServerResponse, code:http_reply_code) : void {
+export function sendTextReply(rep:ServerResponse, code:http_reply_code, headers:OutgoingHttpHeaders = {}) : void {
 	const msg = httpMessage.get(code) as string;
 	const body = Buffer.from(`${ code } - ${ msg }`);
 
-	rep.writeHead(code, msg, getHeaders(body, mime_type.text, mime_encoding.utf8));
-	rep.write(body);
+	rep
+		.writeHead(code, msg, {
+			...headers,
+			...getHeaders(body, mime_type.text, mime_encoding.utf8)
+		})
+		.write(body);
 }
 
-export function sendJsonReply(rep:ServerResponse, code:http_reply_code, headers?:OutgoingHttpHeaders) : void {
+export function sendJsonReply(rep:ServerResponse, code:http_reply_code, headers:OutgoingHttpHeaders = {}) : void {
 	const message = httpMessage.get(code) as string;
 	const body = Buffer.from(JSON.stringify({ status : message }));
 
