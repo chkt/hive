@@ -1,3 +1,4 @@
+import ReadOnlyDict = NodeJS.ReadOnlyDict;
 import * as http from 'http';
 import * as https from 'https';
 import { Hash } from '../common/base/Hash';
@@ -42,6 +43,13 @@ export function decodeContentType(header:string) : MimeType {
 	}
 
 	throw new Error(`'${ header }' not a '${ http_request_header.content_type }'`);
+}
+
+export function encodeContentHeaders(body:Buffer, mime:mime_type, encoding?:mime_encoding) : ReadOnlyDict<string> {
+	return {
+		[ http_request_header.content_type ] : encodeContentType(mime, encoding),
+		[ http_request_header.content_length ] : body.byteLength.toFixed(0)
+	};
 }
 
 export function getRemoteAddress(req:http.IncomingMessage) : string {
