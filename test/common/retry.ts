@@ -1,8 +1,15 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
 
+import { createSignal } from '../../source/common/signal';
 import { reportAbort, ReportData, reportToString, retry } from '../../source/common/retry';
 
+
+function delay(ms:number = 0) : Promise<void> {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
+}
 
 function reportData(msg:string[], ret:boolean, data:ReportData) : boolean {
 	msg.push(String(data.reason));
@@ -32,13 +39,13 @@ describe('retry', () => {
 
 			assert.deepStrictEqual(msg, [
 				'Error: bang',
-				'retry: attempt 1/5, next in 37ms',
+				'retry attempt 1/5, next in 37ms',
 				'Error: bang',
-				'retry: attempt 2/5, next in 113ms',
+				'retry attempt 2/5, next in 113ms',
 				'Error: bang',
-				'retry: attempt 3/5, next in 187ms',
+				'retry attempt 3/5, next in 187ms',
 				'Error: bang',
-				'retry: attempt 4/5, next in 263ms',
+				'retry attempt 4/5, next in 263ms',
 				'Error: bang'
 			]);
 
@@ -89,11 +96,11 @@ describe('retry', () => {
 
 			assert.deepStrictEqual(msg, [
 				'Error: bang',
-				'retry: attempt 1/5, next in 37ms',
+				'retry attempt 1/5, next in 37ms',
 				'Error: bang',
-				'retry: attempt 2/5, next in 113ms',
+				'retry attempt 2/5, next in 113ms',
 				'Error: bang',
-				'retry: attempt 3/5, aborting',
+				'retry attempt 3/5, aborting',
 				'Error: bang'
 			]);
 
@@ -127,13 +134,99 @@ describe('retry', () => {
 
 			assert.deepStrictEqual(msg, [
 				'Error: bang',
-				'retry: attempt 1/5, next in 37ms',
+				'retry attempt 1/5, next in 37ms',
 				'Error: bang',
-				'retry: attempt 2/5, next in 113ms',
+				'retry attempt 2/5, next in 113ms',
 				'Error: kaboom'
 			]);
 
 			assert(diff >= 150 && diff < 337);
 		}
+	});
+
+	it('should delegate abort signal during retry', async () => {
+		const msg:string[] = [];
+		const signal = createSignal();
+		const start = Date.now();
+
+		retry({
+			action : abort => new Promise(resolve => {
+				delay(6000).then(resolve.bind(null, 'foo'));
+				abort.onSignal(async () => resolve('bar'));
+			}),
+			report : reportData.bind(null, msg, true),
+			abort : signal.receiver,
+			maxWait : 6000,
+			maxAttempts : 2
+		})
+			.then(value => msg.push(value as string))
+			.catch(() => assert.fail());
+
+
+		await delay(100);
+		await signal.send();
+		await delay();
+
+		assert.deepStrictEqual(msg, [ 'bar' ]);
+		assert(Date.now() - start < 120);
+	});
+
+	it('should abort on abort signal while waiting', async () => {
+		const msg:string[] = [];
+		const signal = createSignal();
+		const start = Date.now();
+
+		retry({
+			action : abort => {
+				abort.onSignal(async () => void msg.push('aborted action'));
+
+				return Promise.reject('bang');
+			},
+			report : reportData.bind(null, msg, true),
+			abort : signal.receiver,
+			maxWait : 600,
+			maxAttempts : 2
+		})
+			.then(value => msg.push(value as string))
+			.catch(reason => msg.push(reason as string));
+
+		await delay();
+		await signal.send();
+		await delay();
+
+		assert.deepStrictEqual(msg, [
+			'bang',
+			'retry attempt 1/2, next in 600ms',
+			'bang'
+		]);
+		assert(Date.now() - start < 600);
+	});
+
+	it('should abort on abort signal after retry', async () => {
+		const msg:string[] = [];
+		const signal = createSignal();
+
+		retry({
+			action : async () => {
+				await delay(100);
+
+				throw new Error('foo');
+			},
+			report : reportData.bind(null, msg, true),
+			abort : signal.receiver,
+			maxWait : 6000,
+			maxAttempts : 2
+		})
+			.then(
+				value => msg.push(String(value)),
+				reason => msg.push(String(reason))
+			);
+
+		await signal.send();
+		await delay(100);
+
+		assert.deepStrictEqual(msg, [
+			'Error: foo'
+		]);
 	});
 });
