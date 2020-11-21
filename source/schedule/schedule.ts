@@ -11,14 +11,16 @@ interface ScheduleContext {
 	readonly no : number;
 }
 
-type scheduleHandler = (context:ScheduleContext) => Promise<void>;
-
+export interface TaskHandler {
+	start(context:ScheduleContext) : Promise<void>;
+	stop() : Promise<void>;
+}
 
 interface ScheduleConfig {
 	readonly name? : string;
 	readonly shutdownSignals? : ReadonlyArray<Signals>;
 	readonly injector : Injector<AppCommonProvider>;
-	readonly handler : scheduleHandler;
+	readonly handler : TaskHandler;
 	readonly interval? : number;
 	readonly offset? : number;
 	readonly triggerOnStart? : boolean;
@@ -30,9 +32,8 @@ type DefaultScheduleSettings = Pick<ScheduleSettings, 'shutdownSignals'|'interva
 type MixedScheduleSettings = ScheduleConfig & DefaultScheduleSettings;
 type ComputedScheduleSettings = Pick<ScheduleSettings, 'name'|'interval'|'offset'|'maxCount'>;
 
-
 interface ScheduleControl {
-	stop() : void;
+	stop() : Promise<void>;
 }
 
 
@@ -73,8 +74,6 @@ function getDelta(settings:ScheduleSettings) {
 	const offset = Date.now() % settings.interval;
 	const target = offset < settings.offset ? settings.offset : settings.interval + settings.offset;
 
-	// console.log(Date.now(), target - offset);
-
 	return target - offset;
 }
 
@@ -99,7 +98,7 @@ export function createSchedule(config:ScheduleConfig) : ScheduleControl {
 		log.message(`${ settings.name } triggered ${ countToString(num, settings.maxCount) }`, log_level.info);
 
 		try {
-			await settings.handler({ name : settings.name, no : num - 1 });
+			await settings.handler.start({ name : settings.name, no : num - 1 });
 
 			log.message(`${ settings.name } completed [${ Date.now() - now }ms]`, log_level.info);
 		}
@@ -111,31 +110,37 @@ export function createSchedule(config:ScheduleConfig) : ScheduleControl {
 
 		active = false;
 
-		if (num < settings.maxCount && !stop) id = setTimeout(handler, getDelta(settings));
+		if (num < settings.maxCount && !stopped) id = setTimeout(handler, getDelta(settings));
 		else log.message(`${ settings.name } stopped ${ countToString(num, settings.maxCount) }`)
 	}
 
 	log.message(`${ settings.name } started`, log_level.notice);
 
 	let active = false;
-	let stop = false;
+	let stopped = false;
 	let num = 0;
 	let id = setTimeout(handler, settings.triggerOnStart ? 0 : getDelta(settings));
 
 	const ctl = {
-		stop : () => {
-			if (stop) return;
-			else if (!active) {
-				log.message(`${ settings.name } stopped ${ countToString(num, settings.maxCount) }`);
-				clearTimeout(id);
+		stop : async () => {
+			if (stopped) return;
+			else stopped = true;
+
+			if (active) {
+				log.message(`${ settings.name } stopping ${ countToString(num, settings.maxCount) }`, log_level.notice);
+
+				await settings.handler.stop();
 			}
-			else stop = true;
+			else clearTimeout(id);
+
+			log.message(`${ settings.name } stopped ${ countToString(num, settings.maxCount) }`, log_level.notice);
 		}
 	}
 
 	onSignals(settings.shutdownSignals, (signal:Signals) => {
 		log.message(`received ${ signal }, ${ settings.name } stopping`, log_level.notice);
-		ctl.stop();
+
+		void ctl.stop();
 	});
 
 	return ctl;

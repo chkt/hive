@@ -37,6 +37,10 @@ function mockInjector(provider:AppCommonProvider) : Injector<AppCommonProvider> 
 	}
 }
 
+function asyncNoop() : Promise<void> {
+	return Promise.resolve();
+}
+
 function delay(ms:number) : Promise<void> {
 	return new Promise(resolve => {
 		setTimeout(resolve, ms);
@@ -85,7 +89,10 @@ describe('createSchedule', () => {
 	it('should create a schedule', () => {
 		const schedule = createSchedule({
 			injector : mockInjector(mockCommonProvider()),
-			handler : async () => undefined,
+			handler : {
+				start : asyncNoop,
+				stop : asyncNoop
+			},
 			maxCount : 0
 		});
 
@@ -103,7 +110,10 @@ describe('createSchedule', () => {
 		createSchedule({
 			name : 'foo',
 			injector,
-			handler : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+			handler : {
+				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+				stop : asyncNoop
+			},
 			interval : 100,
 			offset : 50,
 			maxCount : 3
@@ -136,7 +146,10 @@ describe('createSchedule', () => {
 		const schedule = createSchedule({
 			name : 'foo',
 			injector,
-			handler : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+			handler : {
+				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+				stop : asyncNoop
+			},
 			interval : 100,
 			offset : 25
 		});
@@ -171,9 +184,12 @@ describe('createSchedule', () => {
 		createSchedule({
 			name : 'foo',
 			injector,
-			handler : async context => {
-				if (context.no === 0) throw new Error(`bang ${ context.name} ${ context.no }`);
-				else injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose);
+			handler : {
+				start : async context => {
+					if (context.no === 0) throw new Error(`bang ${ context.name} ${ context.no }`);
+					else injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose);
+				},
+				stop : asyncNoop
 			},
 			interval : 100,
 			offset : 0,
