@@ -42,7 +42,7 @@ describe('createSignal', () => {
 
 		msgs.push(`level 0, ${ signal.receiver.numReceived() }`);
 
-		new Promise(async (resolve, reject) => {
+		new Promise(async resolve => {
 			const receiver = signal.receiver.extend().onSignal(async () => {
 				msgs.push(`received level 1, ${ receiver.numReceived() }`);
 				resolve();
@@ -50,7 +50,7 @@ describe('createSignal', () => {
 
 			msgs.push(`level 1, ${ receiver.numReceived() }`);
 
-			await new Promise((resolve2, reject2) => {
+			await new Promise(resolve2 => {
 				const receiver2 = receiver.extend().onSignal(async () => {
 					msgs.push(`received level 2, ${ receiver2.numReceived() }`);
 					resolve2();
@@ -129,6 +129,63 @@ describe('createSignal', () => {
 			'level 1, 0',
 			'level 2, 0',
 			'resolved p2 bar',
+			'sending, 0',
+			'received level 1, 1',
+			'received level 0, 1',
+			'resolved p1 foo',
+			'sent, 1'
+		]);
+	});
+
+	it('should handle ephemeral handler chains with rejected values', async () => {
+		const msgs:string[] = [];
+		const signal = createSignal();
+
+		signal.receiver.onSignal(async () => {
+			msgs.push(`received level 0, ${ signal.receiver.numReceived() }`);
+		});
+
+		msgs.push(`level 0, ${ signal.receiver.numReceived() }`);
+
+		signal.receiver
+			.extendWhile(receiver => new Promise(resolve => {
+				receiver.onSignal(async () => {
+					msgs.push(`received level 1, ${ receiver.numReceived() }`)
+					resolve('foo');
+				});
+
+				msgs.push(`level 1, ${ receiver.numReceived() }`);
+
+				receiver
+					.extendWhile(async receiver2 => {
+						receiver2.onSignal(async () => {
+							msgs.push(`received level 2, ${ receiver2.numReceived() }`);
+						});
+
+						msgs.push(`level 2, ${ receiver2.numReceived() }`);
+
+						throw new Error('bar');
+					})
+					.then(
+						value => msgs.push(`resolved p2 ${ value }`),
+						reason => msgs.push(`rejected p2 ${ String(reason) }`)
+					);
+			}))
+			.then(value => msgs.push(`resolved p1 ${ value }`));
+
+		await delay();
+
+		msgs.push(`sending, ${ signal.receiver.numReceived() }`);
+
+		await signal.send();
+
+		msgs.push(`sent, ${ signal.receiver.numReceived() }`);
+
+		assert.deepStrictEqual(msgs, [
+			'level 0, 0',
+			'level 1, 0',
+			'level 2, 0',
+			'rejected p2 Error: bar',
 			'sending, 0',
 			'received level 1, 1',
 			'received level 0, 1',
@@ -234,6 +291,62 @@ describe('createSignal', () => {
 			'level 1, 0',
 			'level 2, 0',
 			'resolved p2 bar',
+			'sending, 0',
+			'received level 1, 1',
+			'resolved p1 foo',
+			'sent, 1'
+		]);
+	});
+
+	it('should handle ephemeral delegated handler chains with rejected values', async () => {
+		const msgs:string[] = [];
+		const signal = createSignal();
+
+		signal.receiver.onSignal(async () => {
+			msgs.push(`received level 0, ${ signal.receiver.numReceived() }`);
+		});
+
+		msgs.push(`level 0, ${ signal.receiver.numReceived() }`);
+
+		signal.receiver
+			.delegateWhile(receiver => new Promise(resolve => {
+				receiver.onSignal(async () => {
+					msgs.push(`received level 1, ${ receiver.numReceived() }`)
+					resolve('foo');
+				});
+
+				msgs.push(`level 1, ${ receiver.numReceived() }`);
+
+				receiver
+					.delegateWhile(async receiver2 => {
+						receiver2.onSignal(async () => {
+							msgs.push(`received level 2, ${ receiver2.numReceived() }`);
+						});
+
+						msgs.push(`level 2, ${ receiver2.numReceived() }`);
+
+						throw new Error('bar');
+					})
+					.then(
+						value => msgs.push(`resolved p2 ${ value }`),
+						reason => msgs.push(`rejected p2 ${ String(reason) }`)
+					);
+			}))
+			.then(value => msgs.push(`resolved p1 ${ value }`));
+
+		await delay();
+
+		msgs.push(`sending, ${ signal.receiver.numReceived() }`);
+
+		await signal.send();
+
+		msgs.push(`sent, ${ signal.receiver.numReceived() }`);
+
+		assert.deepStrictEqual(msgs, [
+			'level 0, 0',
+			'level 1, 0',
+			'level 2, 0',
+			'rejected p2 Error: bar',
 			'sending, 0',
 			'received level 1, 1',
 			'resolved p1 foo',

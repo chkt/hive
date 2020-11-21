@@ -56,12 +56,18 @@ function numReceived(this:Handler) : number {
 	return received.get(this) ?? 0;
 }
 
-function wrap<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise<R> {
-	return fn(this.extend()).then(this.release.bind(this));
+function childWhile<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise<R> {
+	return fn(this.extend()).then(
+		this.release.bind(this),
+		reason => Promise.reject(resetChild.call(this, reason))
+	);
 }
 
-function wrap2<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise<R> {
-	return fn(this.delegate()).then(this.release.bind(this));
+function proxyWhile<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise<R> {
+	return fn(setProxy.call(this)).then(
+		resetChild.bind<Handler, R, R>(this),
+		reason => Promise.reject(resetChild.call(this, reason))
+	);
 }
 
 
@@ -70,9 +76,9 @@ export function createReceiver() : Handler {
 		onSignal : setHandler,
 		numReceived,
 		extend : setChild,
-		extendWhile : wrap,
+		extendWhile : childWhile,
 		delegate : setProxy,
-		delegateWhile : wrap2,
+		delegateWhile : proxyWhile,
 		release : resetChild
 	};
 }
