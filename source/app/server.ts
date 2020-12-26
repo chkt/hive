@@ -77,7 +77,7 @@ function onDown(this:http.Server, log:Logger) : void {
 
 
 function shutdown(this:http.Server, log:Logger, signal:Signals) : void {
-	new Promise(resolve => {
+	new Promise<void>(resolve => {
 		this.getConnections((err, num) => {
 			log.message(
 				`received ${ signal }, going down with ${ err === null ? num : '?' } connections`,
