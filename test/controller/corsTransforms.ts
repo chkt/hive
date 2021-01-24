@@ -6,11 +6,11 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { Switch } from '@chkt/states/dist/state';
 import { http_method } from '../../source/io/http';
 import { ControllerContext } from '../../source/controller/controller';
-import { CorsOrigins, filterCorsOrigin, filterMethod, replyCorsPreflight } from '../../source/controller/corsTransforms';
+import { CorsOrigins, encodeCorsOrigin, encodeCorsPreflight } from '../../source/controller/corsTransforms';
 
 
 interface MockReply {
-	headers : Dict<string|number|string[]>;
+	headers : Dict<string|number|readonly string[]>;
 }
 
 
@@ -54,17 +54,7 @@ function mockSwitch() : Switch<ControllerContext> {
 }
 
 
-describe('filterMethod', () => {
-	it('should return a success state for context matching method', async () => {
-		const context = mockContext(mockRequest(), mockReply());
-		const next = mockSwitch();
-
-		assert.deepStrictEqual(await filterMethod(http_method.get, context, next), { id : 'success', context });
-		assert.deepStrictEqual(await filterMethod(http_method.options, context, next), { id : 'failure', context });
-	});
-});
-
-describe('filterCorsOrigin', () => {
+describe('encodeCorsOrigin', () => {
 	it ('should attach an Access-Control-Allow-Origin header if in config', async () => {
 		const requestHeaders:Dict<string> = {};
 		const replyHeaders:Dict<string> = {};
@@ -78,17 +68,17 @@ describe('filterCorsOrigin', () => {
 
 		requestHeaders.origin = 'http://foo';
 
-		assert.deepStrictEqual(await filterCorsOrigin(sites, context, next), { id : 'default', context });
+		assert.deepStrictEqual(await encodeCorsOrigin(sites, context, next), { id : 'default', context });
 		assert.deepStrictEqual(replyHeaders, {});
 
 		requestHeaders.origin = 'http://bar';
 
-		assert.deepStrictEqual(await filterCorsOrigin(sites, context, next), { id : 'default', context });
+		assert.deepStrictEqual(await encodeCorsOrigin(sites, context, next), { id : 'default', context });
 		assert.deepStrictEqual(replyHeaders, { 'Access-Control-Allow-Origin' : 'http://bar' });
 	});
 });
 
-describe('replyCorsPreflight', () => {
+describe('encodeCorsPreflight', () => {
 	it ('should attach cors headers if request matches config', async () => {
 		const next = mockSwitch();
 		const sites:CorsOrigins = [{
@@ -101,7 +91,7 @@ describe('replyCorsPreflight', () => {
 		let reply = mockReply();
 		let context = mockContext(mockRequest(http_method.options), reply);
 
-		assert.deepStrictEqual(await replyCorsPreflight(sites, context, next), { id : 'default', context });
+		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
 		assert.strictEqual(reply.statusCode, 200);
 		assert.strictEqual(reply.statusMessage, 'Ok');
 		assert.deepStrictEqual(reply.headers, {});
@@ -111,7 +101,7 @@ describe('replyCorsPreflight', () => {
 			origin : 'http://foo'
 		}), reply);
 
-		assert.deepStrictEqual(await replyCorsPreflight(sites, context, next), { id : 'default', context });
+		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
 		assert.strictEqual(reply.statusCode, 200);
 		assert.strictEqual(reply.statusMessage, 'Ok');
 		assert.deepStrictEqual(reply.headers, {
@@ -129,7 +119,7 @@ describe('replyCorsPreflight', () => {
 			'access-control-request-headers' : 'Accept, Content-Type, Authorization'
 		}), reply);
 
-		assert.deepStrictEqual(await replyCorsPreflight(sites, context, next), { id : 'default', context });
+		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
 		assert.strictEqual(reply.statusCode, 200);
 		assert.strictEqual(reply.statusMessage, 'Ok');
 		assert.deepStrictEqual(reply.headers, {
@@ -140,6 +130,4 @@ describe('replyCorsPreflight', () => {
 			'Vary' : 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'
 		});
 	});
-
-
 });

@@ -1,8 +1,8 @@
 import { State, Switch } from '@chkt/states/dist/state';
 import { http_method, http_reply_code, http_request_header, http_response_header } from '../io/http';
-import { decodeListHeader, encodeListHeader } from '../io/request';
+import { setResponseStatus } from '../io/reply';
+import { decodeHeaderListHeader, encodeListHeader } from '../io/request';
 import { ControllerContext } from './controller';
-import { setResponseStatus } from "../io/reply";
 
 
 export interface CorsOrigin {
@@ -22,16 +22,7 @@ const corsSafeHeaders:ReadonlyArray<string> = [
 ];
 
 
-export async function filterMethod(
-	method:http_method,
-	context:ControllerContext,
-	next:Switch<ControllerContext>
-) : Promise<State<ControllerContext>> {
-	if (context.request.method === method) return next.success(context);
-	else return next.failure(context);
-}
-
-export async function filterCorsOrigin(
+export async function encodeCorsOrigin(
 	sites:CorsOrigins,
 	context:ControllerContext,
 	next:Switch<ControllerContext>
@@ -47,11 +38,10 @@ export async function filterCorsOrigin(
 		else return false;
 	});
 
-
 	return next.default(context);
 }
 
-export async function replyCorsPreflight(
+export async function encodeCorsPreflight(
 	sites:CorsOrigins,
 	context:ControllerContext,
 	next:Switch<ControllerContext>
@@ -64,7 +54,7 @@ export async function replyCorsPreflight(
 
 	if (site !== undefined) {
 		const method = (context.request.headers['access-control-request-method'] ?? '') as string;
-		const headers = decodeListHeader((context.request.headers['access-control-request-headers'] ?? '') as string);
+		const headers = decodeHeaderListHeader((context.request.headers['access-control-request-headers'] ?? '') as string);
 
 		reply.setHeader(http_response_header.cors_origin, site.origin);
 		reply.setHeader(
