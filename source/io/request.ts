@@ -2,9 +2,19 @@ import ReadOnlyDict = NodeJS.ReadOnlyDict;
 import * as http from 'http';
 import * as https from 'https';
 import { Hash } from '../common/base/Hash';
-import { isEncoding, isMimeType, mime_encoding, mime_type, MimeType } from './mimeType';
+import { decodeMimeType, isEncoding, isMimeType, mime_encoding, mime_type, MimeParts, MimeType } from './mimeType';
 import { ip_port } from './ip';
 import { http_request_header } from './http';
+
+
+type transform<R> = (token:string) => R;
+type differentiate<T> = (a:T, b:T) => number;
+
+export interface Preference<T> {
+	readonly token : string;
+	readonly data : T;
+	readonly q : number;
+}
 
 
 const contentTypeExpr = /^([a-z]+\/[-a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
@@ -20,8 +30,43 @@ function capitalizeHeaderName(header:string) : string {
 	return header.charAt(0).toUpperCase() + header.slice(1);
 }
 
-export function decodeListHeader(header:string) : ReadonlyArray<string> {
-	return header !== '' ? header.split(',').map(value => capitalizeHeaderName(value.trim())) : [];
+function decodeListHeader<T>(
+	header:string,
+	normalize:transform<T>
+) : T[] {
+	return header !== '' ? header.split(',').map(value => normalize(value.trim())) : [];
+}
+
+function decodePreferenceHeader<T>(
+	header:string,
+	decode:transform<T>,
+	sort:differentiate<T>
+) : readonly Preference<T>[] {
+	return decodeListHeader(header, segment => {
+			const [ token, param ] = segment.split(';', 2);
+			const [ key, value ] = (param ?? 'q=1').split('=', 2);
+			const q = Number(value);
+
+			if (token === '' || key !== 'q' || Number.isNaN(q) || q === 0.0) throw new Error(`'${ header }' not a preference header`);
+
+			return { token, data : decode(token), q };
+		})
+		.sort((a, b) => b.q - a.q || sort(a.data, b.data));
+}
+
+
+export function decodeHeaderListHeader(list:string) {
+	return decodeListHeader(list, capitalizeHeaderName);
+}
+
+export function decodeAcceptHeader(accept:string) : readonly Preference<MimeParts>[] {
+	return decodePreferenceHeader(
+		accept,
+		decodeMimeType,
+		(a, b) =>
+			(b.topType === '*' ? 0 : b.subType === '*' ? 1 : 2) -
+			(a.topType === '*' ? 0 : a.subType === '*' ? 1 : 2)
+	);
 }
 
 export function encodeListHeader(header:ReadonlyArray<string>) : string {
