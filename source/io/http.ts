@@ -46,6 +46,7 @@ export const httpMessage:ReadonlyMap<number, string> = new Map([
 ]);
 
 export enum http_request_header {
+	accept = 'Accept',
 	accept_charset = 'Accept-Charset',
 	accept_language = 'Accept-Language',
 	accept_mime = 'Accept',
