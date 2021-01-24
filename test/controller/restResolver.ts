@@ -6,7 +6,7 @@ import { createTransitionMap } from '@chkt/states/dist/create';
 import { bindContextToState, contextToState, isErrorState } from '@chkt/states/dist/traverse';
 import { Hash } from '../../source/common/base/Hash';
 import { http_method, http_reply_code } from '../../source/io/http';
-import { controller_action, reply_status } from '../../source/controller/restTransforms';
+import { rest_action } from '../../source/controller/restTransforms';
 import { resolver, startId } from '../../source/controller/restResolver';
 import {
 	ControllerActions,
@@ -15,6 +15,7 @@ import {
 	createReturnState,
 	state_result_type
 } from '../../source/controller/controller';
+import { reply_status } from "../../source/controller/apiTransforms";
 
 
 type cb = (cb?:Buffer|Error) => void;
@@ -120,8 +121,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.list },
-				controller : { ...context.controller, selectedAction : controller_action.list },
+				attributes : { action : rest_action.list },
+				controller : { ...context.controller, selectedAction : rest_action.list },
 				view : [{ id : 'foo'}, { id : 'bar' }]
 			}
 		});
@@ -154,8 +155,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.read },
-				controller : { ...context.controller, selectedAction : controller_action.read },
+				attributes : { action : rest_action.read },
+				controller : { ...context.controller, selectedAction : rest_action.read },
 				view : { id : 'foo' }
 			}
 		});
@@ -192,8 +193,8 @@ describe('resolver', () => {
 			context : {
 				...context,
 				requestBody : { id : 'foo' },
-				attributes : { action : controller_action.create },
-				controller : {...context.controller, selectedAction : controller_action.create },
+				attributes : { action : rest_action.create },
+				controller : {...context.controller, selectedAction : rest_action.create },
 				view : { id : "bar" }
 			}
 		});
@@ -230,7 +231,7 @@ describe('resolver', () => {
 			context : {
 				...context,
 				requestBody : { id : 'foo' },
-				attributes : { action : controller_action.update },
+				attributes : { action : rest_action.update },
 				controller : { ...context.controller, selectedAction : 'update' },
 				view : { id : 'bar' }
 			}
@@ -261,8 +262,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.delete },
-				controller : { ...context.controller, selectedAction : controller_action.delete }
+				attributes : { action : rest_action.delete },
+				controller : { ...context.controller, selectedAction : rest_action.delete }
 			}
 		});
 
@@ -328,7 +329,7 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.update, status : reply_status.action_unavailable },
+				attributes : { action : rest_action.update, status : reply_status.action_unavailable },
 				view : { status : 'Method Not Allowed' }
 			}
 		});
@@ -362,8 +363,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.update, status : reply_status.mime_unsupported },
-				controller : { ...context.controller, selectedAction : controller_action.update },
+				attributes : { action : rest_action.update, status : reply_status.mime_unsupported },
+				controller : { ...context.controller, selectedAction : rest_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -397,8 +398,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.update, status : reply_status.request_malformed },
-				controller : { ...context.controller, selectedAction : controller_action.update },
+				attributes : { action : rest_action.update, status : reply_status.request_malformed },
+				controller : { ...context.controller, selectedAction : rest_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -432,8 +433,8 @@ describe('resolver', () => {
 			context : {
 				...context,
 				requestBody : { id : 'foo'},
-				attributes : { action : controller_action.update, status : reply_status.request_malformed },
-				controller : { ...context.controller, selectedAction : controller_action.update },
+				attributes : { action : rest_action.update, status : reply_status.request_malformed },
+				controller : { ...context.controller, selectedAction : rest_action.update },
 				view : { status : 'Bad Request' }
 			}
 		});
@@ -463,8 +464,8 @@ describe('resolver', () => {
 			id : 'end',
 			context : {
 				...context,
-				attributes : { action : controller_action.read, status : reply_status.resource_missing },
-				controller : { ...context.controller, selectedAction : controller_action.read },
+				attributes : { action : rest_action.read, status : reply_status.resource_missing },
+				controller : { ...context.controller, selectedAction : rest_action.read },
 				view : { status : 'Not Found' }
 			}
 		});
@@ -493,8 +494,8 @@ describe('resolver', () => {
 		assert.strictEqual(state.id, 'action');
 		assert.deepStrictEqual(state.context, {
 			...context,
-			attributes : { action : controller_action.read },
-			controller : { ...context.controller, selectedAction : controller_action.read }
+			attributes : { action : rest_action.read },
+			controller : { ...context.controller, selectedAction : rest_action.read }
 		});
 		assert(isErrorState(state));
 	});
@@ -516,8 +517,8 @@ describe('resolver', () => {
 		assert.strictEqual(state.id, 'encode_json');
 		assert.deepStrictEqual(state.context, {
 			...context,
-			attributes : { action : controller_action.read },
-			controller : { ...context.controller, selectedAction : controller_action.read },
+			attributes : { action : rest_action.read },
+			controller : { ...context.controller, selectedAction : rest_action.read },
 			// @ts-ignore
 			view : { id : 1n }
 		});

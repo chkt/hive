@@ -1,10 +1,11 @@
 import { State, Switch } from '@chkt/states/dist/state';
-import { http_method, http_reply_code, http_response_header, httpMessage } from '../io/http';
-import { sendTextReply, setResponseStatus } from '../io/reply';
+import { http_method, http_response_header, httpMessage } from '../io/http';
+import { setResponseStatus } from '../io/reply';
 import { applyControllerAction, ControllerContext } from './controller';
+import { codeOfStatus, reply_status } from "./apiTransforms";
 
 
-export const enum controller_action {
+export const enum rest_action {
 	list = 'list',
 	create = 'create',
 	read = 'read',
@@ -12,56 +13,25 @@ export const enum controller_action {
 	delete = 'delete'
 }
 
-export const enum reply_status {
-	action_unavailable = 'action unavailable',
-	auth_failed = 'authentication failed',
-	auth_malformed = 'authentication required',
-	error = 'processing error',
-	mime_unsupported = 'representation unsupported',
-	ok = 'ok',
-	request_malformed = 'request malformed',
-	request_unsupported = 'request unsupported',
-	resource_missing = 'resource not found',
-	service_unavailable = 'service unavailable'
-}
-
-const replyMap:Map<reply_status, http_reply_code> = new Map([
-	[ reply_status.action_unavailable, http_reply_code.no_method ],
-	[ reply_status.auth_failed, http_reply_code.no_auth ],
-	[ reply_status.auth_malformed, http_reply_code.no_auth ],
-	[ reply_status.error, http_reply_code.error ],
-	[ reply_status.mime_unsupported, http_reply_code.malformed ],
-	[ reply_status.ok, http_reply_code.ok ],
-	[ reply_status.request_malformed, http_reply_code.malformed ],
-	[ reply_status.request_unsupported, http_reply_code.malformed ],
-	[ reply_status.resource_missing, http_reply_code.not_found ],
-	[ reply_status.service_unavailable, http_reply_code.no_service ],
-]);
-
 interface MethodMapping {
-	method : http_method;
-	action : controller_action;
-	id : boolean;
+	readonly method : http_method;
+	readonly action : rest_action;
+	readonly id : boolean;
 }
-type MethodMappings = MethodMapping[];
+type MethodMappings = readonly MethodMapping[];
 
 const map:MethodMappings = [
-	{ method : http_method.get, action : controller_action.list, id : false },
-	{ method : http_method.get, action : controller_action.read, id : true },
-	{ method : http_method.head, action : controller_action.list, id : false },
-	{ method : http_method.head, action : controller_action.read, id : true },
-	{ method : http_method.post, action : controller_action.create, id : false },
-	{ method : http_method.put, action : controller_action.update, id : true },
-	{ method : http_method.delete, action : controller_action.delete, id : true }
+	{ method : http_method.get, action : rest_action.list, id : false },
+	{ method : http_method.get, action : rest_action.read, id : true },
+	{ method : http_method.head, action : rest_action.list, id : false },
+	{ method : http_method.head, action : rest_action.read, id : true },
+	{ method : http_method.post, action : rest_action.create, id : false },
+	{ method : http_method.put, action : rest_action.update, id : true },
+	{ method : http_method.delete, action : rest_action.delete, id : true }
 ];
 
 
-export function codeOfStatus(status:string|undefined) : http_reply_code {
-	return replyMap.get(status as reply_status) ?? http_reply_code.error;
-}
-
-
-export async function resolveRequestMethod(
+export async function decodeRestAction(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -83,7 +53,7 @@ export async function resolveRequestMethod(
 	return next.failure(context);
 }
 
-export async function filterAction(
+export async function filterRestAction(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -99,7 +69,7 @@ export async function filterAction(
 	return next.failure(context);
 }
 
-export async function applyReplyStatus(
+export async function encodeRestReplyStatus(
 	status:string,
 	context:ControllerContext,
 	next:Switch<ControllerContext>
@@ -113,7 +83,7 @@ export async function applyReplyStatus(
 	});
 }
 
-export async function resolveMethods(
+export async function decodeRestAllowedMethods(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -142,7 +112,7 @@ export async function resolveMethods(
 	});
 }
 
-export async function respondStatus(
+export async function respondRestStatus(
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -154,13 +124,4 @@ export async function respondStatus(
 		...context,
 		view : { status : httpMessage.get(code) ?? 'unresolved' }
 	});
-}
-
-export async function respondError(
-	context:ControllerContext,
-	next:Switch<ControllerContext>
-) : Promise<State<ControllerContext>> {
-	sendTextReply(context.reply, http_reply_code.error);
-
-	return next.failure(context);
 }
