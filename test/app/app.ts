@@ -85,10 +85,12 @@ describe('createApp', () => {
 
 		const req = mockIncomingMessage();
 		const rep = mockServerResponse({
-			writeHead : (code:number, message:string, headers:object) => {
+			writeHead(code:number, message:string, headers:object) {
 				repCode = code;
 				repMessage = message;
 				repHeaders = headers;
+
+				return this;
 			},
 			write : (body:Buffer) => {
 				repBody = body;

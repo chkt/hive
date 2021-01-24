@@ -51,8 +51,10 @@ function mockIncomingMessage(method:string = 'GET', url:string = '/foo') : Incom
 
 function mockServerResponse(messages:object = {}) : ServerResponse {
 	return Object.create(ServerResponse.prototype, {
-		writeHead : { value : (code:number, message:string, headers:object) => {
+		writeHead : { value(code:number, message:string, headers:object) {
 			Object.assign(messages, { code, message, headers });
+
+			return this;
 		} },
 		write : { value : (body:Buffer) => {
 			Object.assign(messages, { body : body.toString() });
