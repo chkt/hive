@@ -1,7 +1,8 @@
-import { State, Switch } from "@chkt/states/dist/state";
-import { sendTextReply } from "./reply";
-import { http_reply_code } from "./http";
-import { ControllerContext } from "../controller/controller";
+import { State, Switch } from '@chkt/states/dist/state';
+import { http_method, http_reply_code } from './http';
+import { encodeListHeader } from './request';
+import { sendTextReply } from './reply';
+import { ControllerContext } from '../controller/controller';
 
 
 export async function respondText(
@@ -15,17 +16,13 @@ export async function respondText(
 }
 
 export async function respondTextBadMethod(
+	allowed:readonly http_method[],
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
-	if (
-		!('allowedMethods' in context.attributes) ||
-		context.attributes.allowedMethods === null
-	) return next.failure(context);
-
 	const reply = context.reply;
 
-	reply.setHeader('Allow', context.attributes.allowedMethods);
+	reply.setHeader('Allow', encodeListHeader(allowed));
 
 	sendTextReply(reply, http_reply_code.no_method);
 
