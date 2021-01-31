@@ -8,6 +8,7 @@ import { AppCommonProvider } from '../app/app';
 
 interface ScheduleContext {
 	readonly name : string;
+	readonly timestamp : number;
 	readonly no : number;
 }
 
@@ -70,8 +71,8 @@ function getSettings(config:ScheduleConfig) : ScheduleSettings {
 	};
 }
 
-function getDelta(settings:ScheduleSettings) {
-	const offset = Date.now() % settings.interval;
+function getDelta(settings:ScheduleSettings, now:number) {
+	const offset = now % settings.interval;
 	const target = offset < settings.offset ? settings.offset : settings.interval + settings.offset;
 
 	return target - offset;
@@ -88,29 +89,30 @@ function countToString(num:number, limit:number) : string {
 export function createSchedule(config:ScheduleConfig) : ScheduleControl {
 	const settings = getSettings(config);
 	const log = settings.injector.get('logger');
+	const time = settings.injector.get('time');
 
 	async function handler() {
 		active = true;
 		num += 1;
 
-		const now = Date.now();
+		const now = time.now();
 
 		log.message(`${ settings.name } triggered ${ countToString(num, settings.maxCount) }`, log_level.info);
 
 		try {
-			await settings.handler.start({ name : settings.name, no : num - 1 });
+			await settings.handler.start({ name : settings.name, timestamp : now, no : num - 1 });
 
-			log.message(`${ settings.name } completed [${ Date.now() - now }ms]`, log_level.info);
+			log.message(`${ settings.name } completed [${ time.now() - now }ms]`, log_level.info);
 		}
 		catch (err) {
 			log
 				.failure(err, log_level.error)
-				.failure(`${ settings.name } failed [${ Date.now() - now }ms]`, log_level.warn);
+				.failure(`${ settings.name } failed [${ time.now() - now }ms]`, log_level.warn);
 		}
 
 		active = false;
 
-		if (num < settings.maxCount && !stopped) id = setTimeout(handler, getDelta(settings));
+		if (num < settings.maxCount && !stopped) id = setTimeout(handler, getDelta(settings, time.now()));
 		else log.message(`${ settings.name } stopped ${ countToString(num, settings.maxCount) }`)
 	}
 
@@ -119,7 +121,7 @@ export function createSchedule(config:ScheduleConfig) : ScheduleControl {
 	let active = false;
 	let stopped = false;
 	let num = 0;
-	let id = setTimeout(handler, settings.triggerOnStart ? 0 : getDelta(settings));
+	let id = setTimeout(handler, settings.triggerOnStart ? 0 : getDelta(settings, time.now()));
 
 	const ctl = {
 		stop : async () => {

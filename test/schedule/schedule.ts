@@ -22,7 +22,7 @@ function mockCommonProvider(msgs:string[] = []) : AppCommonProvider {
 	return {
 		logger,
 		time : {
-			now() { return 0; }
+			now : Date.now
 		}
 	};
 }
@@ -69,7 +69,7 @@ function assertMessages(
 				if (expect.timing !== undefined) {
 					assert(
 						time >= expect.timing,
-						`too short delay: ${ actual[i] } - expected ${ expect.timing }`
+						`too short delay: ${ actual[i] } - expected ${ expect.timing }, actual ${ time }`
 					);
 
 					if (expect.maxDelay !== undefined) {
@@ -111,7 +111,7 @@ describe('createSchedule', () => {
 			name : 'foo',
 			injector,
 			handler : {
-				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.timestamp } ${ context.no }`, log_level.verbose),
 				stop : asyncNoop
 			},
 			interval : 100,
@@ -125,13 +125,13 @@ describe('createSchedule', () => {
 		assertMessages(msgs, [
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo started$/ },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[1\/3]$/, timing : 50, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 0$/, timing : 50, maxDelay: 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 0$/, timing : 50, maxDelay: 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 50, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[2\/3]$/, timing : 150, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 1$/, timing : 150, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 1$/, timing : 150, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 150, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[3\/3]$/, timing : 250, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 2$/, timing : 250, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 2$/, timing : 250, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 250, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo stopped \[3\/3]$/, timing : 250, maxDelay : 5 }
 		]);
@@ -147,7 +147,7 @@ describe('createSchedule', () => {
 			name : 'foo',
 			injector,
 			handler : {
-				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose),
+				start : async context => void injector.get('logger').message(`task ${ context.name } ${ context.timestamp } ${ context.no }`, log_level.verbose),
 				stop : asyncNoop
 			},
 			interval : 100,
@@ -163,13 +163,13 @@ describe('createSchedule', () => {
 		assertMessages(msgs, [
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo started$/, timing : 0, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[1]$/, timing : 25, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 0$/, timing : 25, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 0$/, timing : 25, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 25, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[2]$/, timing : 125, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 1$/, timing : 125, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 1$/, timing : 125, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 125, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[3]$/, timing : 225, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 2$/, timing : 225, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 2$/, timing : 225, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-5]ms]$/, timing : 225, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo stopped \[3]$/, timing : 300 }
 		]);
@@ -186,8 +186,8 @@ describe('createSchedule', () => {
 			injector,
 			handler : {
 				start : async context => {
-					if (context.no === 0) throw new Error(`bang ${ context.name} ${ context.no }`);
-					else injector.get('logger').message(`task ${ context.name } ${ context.no }`, log_level.verbose);
+					if (context.no === 0) throw new Error(`bang ${ context.name} ${ context.timestamp } ${ context.no }`);
+					else injector.get('logger').message(`task ${ context.name } ${ context.timestamp } ${ context.no }`, log_level.verbose);
 				},
 				stop : asyncNoop
 			},
@@ -202,13 +202,13 @@ describe('createSchedule', () => {
 		assertMessages(msgs, [
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo started$/, timing : 0, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[1\/3]$/, timing : 100, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) error\s{3}Error 'bang foo 0'/, timing : 100, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) error\s{3}Error 'bang foo (?<ts>\d+) 0'/, timing : 100, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) warn\s{4}foo failed \[[0-4]ms]$/, timing : 100, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[2\/3]$/, timing : 200, maxDelay : 50 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 1$/, timing : 200, maxDelay : 50 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 1$/, timing : 200, maxDelay : 50 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-4]ms]$/, timing : 200, maxDelay : 50 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo triggered \[3\/3]$/, timing : 300, maxDelay : 5 },
-			{ expr : /^(?<time>\d{4}) verbose task foo 2$/, timing : 300, maxDelay : 5 },
+			{ expr : /^(?<time>\d{4}) verbose task foo (?<ts>\d+) 2$/, timing : 300, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) info\s{4}foo completed \[[0-4]ms]$/, timing : 300, maxDelay : 5 },
 			{ expr : /^(?<time>\d{4}) notice\s{2}foo stopped \[3\/3]$/, timing : 300, maxDelay : 5 }
 		]);
