@@ -13,6 +13,7 @@ export const enum reply_status {
 	ok = 'ok',
 	request_malformed = 'request malformed',
 	request_unsupported = 'request unsupported',
+	resource_mismatch = 'resource mismatch',
 	resource_missing = 'resource not found',
 	service_unavailable = 'service unavailable',
 	timeout = 'processing timeout'
@@ -28,6 +29,7 @@ const replyMap:Map<reply_status, http_reply_code> = new Map([
 	[ reply_status.ok, http_reply_code.ok ],
 	[ reply_status.request_malformed, http_reply_code.malformed ],
 	[ reply_status.request_unsupported, http_reply_code.malformed ],
+	[ reply_status.resource_mismatch, http_reply_code.mismatch ],
 	[ reply_status.resource_missing, http_reply_code.not_found ],
 	[ reply_status.service_unavailable, http_reply_code.no_service ],
 ]);
