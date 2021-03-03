@@ -17,7 +17,9 @@ function mockContext(url:string) : HttpContext {
 function mockController() : Controller {
 	return {
 		resolve : async (context:ControllerContext) : Promise<State<ControllerContext>> => {
-			return { context, id : 'foo' };
+			const state = { context, id : 'foo' };
+
+			return state as State<ControllerContext>;
 		},
 		actions : {},
 		selectedAction : ''

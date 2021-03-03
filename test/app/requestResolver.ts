@@ -114,6 +114,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
+			path : [ 'before_route', 'route', 'after_route', 'controller', 'send' ],
 			context : {
 				timestamp : 123,
 				request,
@@ -144,6 +145,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
+			path : ['before_route', 'route', 'route_error', 'error', 'log', 'send' ],
 			context : {
 				timestamp : 123,
 				request,
@@ -170,6 +172,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
+			path : ['before_route', 'route', 'no_route', 'log', 'send'],
 			context : {
 				timestamp : 123,
 				request,
@@ -197,6 +200,7 @@ describe('resolver', () => {
 		const reply = mockServerResponse(messages);
 		const controller = mockController(context => Promise.resolve({
 			id : 'foo',
+			path : [],
 			context,
 			error : new Error('bang')
 		}));
@@ -210,6 +214,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
+			path : ['before_route', 'route', 'after_route', 'controller', 'error', 'log', 'send'],
 			context : {
 				timestamp : 123,
 				request,
@@ -234,6 +239,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(createHttpContext(123, request, reply)), {
 			id : 'after_send',
+			path : ['before_route', 'route', 'after_route', 'controller', 'no_controller', 'error', 'log', 'send'],
 			context : {
 				timestamp : 123,
 				request,
