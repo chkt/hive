@@ -1,13 +1,13 @@
 import { State, Switch } from '@chkt/states/dist/state';
-import { http_method, http_reply_code, http_request_header, http_response_header } from '../io/http';
+import { HttpMethod, httpRequestHeader, httpResponseCode, httpResponseHeader } from '../io/http';
 import { setResponseStatus } from '../io/reply';
-import { decodeHeaderListHeader, encodeListHeader } from '../io/request';
+import { decodeHeaderListHeader, encodeHeaderListHeader } from '../io/request';
 import { ControllerContext } from './controller';
 
 
 export interface CorsOrigin {
 	readonly origin : string;
-	readonly allowedMethods : ReadonlyArray<http_method>;
+	readonly allowedMethods : ReadonlyArray<HttpMethod>;
 	readonly allowedHeaders : ReadonlyArray<string>;
 	readonly maxAge? : number;
 }
@@ -16,9 +16,9 @@ export type CorsOrigins = ReadonlyArray<CorsOrigin>;
 
 
 const corsSafeHeaders:ReadonlyArray<string> = [
-	http_request_header.accept_mime,
-	http_request_header.accept_language,
-	http_request_header.content_language,
+	httpRequestHeader.acceptMediaType,
+	httpRequestHeader.acceptLanguage,
+	httpRequestHeader.contentLanguage,
 ];
 
 
@@ -31,7 +31,7 @@ export async function encodeCorsOrigin(
 
 	sites.some(site => {
 		if (origin === site.origin) {
-			context.reply.setHeader(http_response_header.cors_origin, origin);
+			context.reply.setHeader(httpResponseHeader.corsOrigin, origin);
 
 			return true;
 		}
@@ -50,26 +50,26 @@ export async function encodeCorsPreflight(
 	const origin = context.request.headers.origin;
 	const site = sites.find(value => origin === value.origin);
 
-	setResponseStatus(context.reply, http_reply_code.ok);
+	setResponseStatus(context.reply, httpResponseCode.empty);
 
 	if (site !== undefined) {
 		const method = (context.request.headers['access-control-request-method'] ?? '') as string;
 		const headers = decodeHeaderListHeader((context.request.headers['access-control-request-headers'] ?? '') as string);
 
-		reply.setHeader(http_response_header.cors_origin, site.origin);
+		reply.setHeader(httpResponseHeader.corsOrigin, site.origin);
 		reply.setHeader(
-			http_response_header.cors_methods,
-			encodeListHeader(site.allowedMethods.filter(value => value === method))
+			httpResponseHeader.corsMethods,
+			encodeHeaderListHeader(site.allowedMethods.filter(value => value === method))
 		);
 		reply.setHeader(
-			http_response_header.cors_headers,
-			encodeListHeader(headers.filter(value => !corsSafeHeaders.includes(value) && site.allowedHeaders.includes(value)))
+			httpResponseHeader.corsHeaders,
+			encodeHeaderListHeader(headers.filter(value => !corsSafeHeaders.includes(value) && site.allowedHeaders.includes(value)))
 		);
-		reply.setHeader(http_response_header.cors_max_age, (site.maxAge ?? 0).toFixed(0));
-		reply.setHeader(http_response_header.vary, encodeListHeader([
-			http_request_header.origin,
-			http_request_header.cors_method,
-			http_request_header.cors_headers
+		reply.setHeader(httpResponseHeader.corsMaxAge, (site.maxAge ?? 0).toFixed(0));
+		reply.setHeader(httpResponseHeader.vary, encodeHeaderListHeader([
+			httpRequestHeader.origin,
+			httpRequestHeader.corsMethod,
+			httpRequestHeader.corsHeaders
 		]));
 	}
 
