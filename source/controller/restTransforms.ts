@@ -1,8 +1,8 @@
 import { State, Switch } from '@chkt/states/dist/state';
-import { http_method, http_response_header, httpMessage } from '../io/http';
+import { httpMethod, HttpMethod, httpResponseHeader, messageOfCode } from '../io/http';
 import { setResponseStatus } from '../io/reply';
+import { codeOfStatus, reply_status } from './apiTransforms';
 import { applyControllerAction, ControllerContext } from './controller';
-import { codeOfStatus, reply_status } from "./apiTransforms";
 
 
 export const enum rest_action {
@@ -14,20 +14,20 @@ export const enum rest_action {
 }
 
 interface MethodMapping {
-	readonly method : http_method;
+	readonly method : HttpMethod;
 	readonly action : rest_action;
 	readonly id : boolean;
 }
 type MethodMappings = readonly MethodMapping[];
 
 const map:MethodMappings = [
-	{ method : http_method.get, action : rest_action.list, id : false },
-	{ method : http_method.get, action : rest_action.read, id : true },
-	{ method : http_method.head, action : rest_action.list, id : false },
-	{ method : http_method.head, action : rest_action.read, id : true },
-	{ method : http_method.post, action : rest_action.create, id : false },
-	{ method : http_method.put, action : rest_action.update, id : true },
-	{ method : http_method.delete, action : rest_action.delete, id : true }
+	{ method : httpMethod.get, action : rest_action.list, id : false },
+	{ method : httpMethod.get, action : rest_action.read, id : true },
+	{ method : httpMethod.head, action : rest_action.list, id : false },
+	{ method : httpMethod.head, action : rest_action.read, id : true },
+	{ method : httpMethod.post, action : rest_action.create, id : false },
+	{ method : httpMethod.put, action : rest_action.update, id : true },
+	{ method : httpMethod.delete, action : rest_action.delete, id : true }
 ];
 
 
@@ -88,7 +88,7 @@ export async function decodeRestAllowedMethods(
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
 	const actions = context.controller.actions;
-	const allow:http_method[] = [];
+	const allow:HttpMethod[] = [];
 
 	for (const action in actions) {
 		if (!actions.hasOwnProperty(action)) continue;
@@ -101,7 +101,7 @@ export async function decodeRestAllowedMethods(
 		}
 	}
 
-	context.reply.setHeader(http_response_header.allowed_methods, allow.join(', '));
+	context.reply.setHeader(httpResponseHeader.allowedMethods, allow.join(', '));
 
 	return next.failure({
 		...context,
@@ -122,6 +122,6 @@ export async function respondRestStatus(
 
 	return next.success({
 		...context,
-		view : { status : httpMessage.get(code) ?? 'unresolved' }
+		view : { status : messageOfCode(code) }
 	});
 }

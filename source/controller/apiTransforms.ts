@@ -1,5 +1,5 @@
 import { State, Switch } from '@chkt/states/dist/state';
-import { http_reply_code } from '../io/http';
+import { httpResponseCode, HttpResponseCode } from '../io/http';
 import { ControllerContext } from './controller';
 
 
@@ -19,24 +19,24 @@ export const enum reply_status {
 	timeout = 'processing timeout'
 }
 
-const replyMap:Map<reply_status, http_reply_code> = new Map([
-	[ reply_status.action_unavailable, http_reply_code.no_method ],
-	[ reply_status.auth_failed, http_reply_code.no_auth ],
-	[ reply_status.auth_malformed, http_reply_code.no_auth ],
-	[ reply_status.endpoint_unavailable, http_reply_code.not_found ],
-	[ reply_status.error, http_reply_code.error ],
-	[ reply_status.mime_unsupported, http_reply_code.malformed ],
-	[ reply_status.ok, http_reply_code.ok ],
-	[ reply_status.request_malformed, http_reply_code.malformed ],
-	[ reply_status.request_unsupported, http_reply_code.malformed ],
-	[ reply_status.resource_mismatch, http_reply_code.mismatch ],
-	[ reply_status.resource_missing, http_reply_code.not_found ],
-	[ reply_status.service_unavailable, http_reply_code.no_service ],
+const replyMap:ReadonlyMap<reply_status, HttpResponseCode> = new Map([
+	[ reply_status.action_unavailable, httpResponseCode.noMethod ],
+	[ reply_status.auth_failed, httpResponseCode.noAuth ],
+	[ reply_status.auth_malformed, httpResponseCode.noAuth ],
+	[ reply_status.endpoint_unavailable, httpResponseCode.notFound ],
+	[ reply_status.error, httpResponseCode.error ],
+	[ reply_status.mime_unsupported, httpResponseCode.malformed ],
+	[ reply_status.ok, httpResponseCode.ok ],
+	[ reply_status.request_malformed, httpResponseCode.malformed ],
+	[ reply_status.request_unsupported, httpResponseCode.malformed ],
+	[ reply_status.resource_mismatch, httpResponseCode.mismatch ],
+	[ reply_status.resource_missing, httpResponseCode.notFound ],
+	[ reply_status.service_unavailable, httpResponseCode.noService ]
 ]);
 
 
-export function codeOfStatus(status:string|undefined) : http_reply_code {
-	return replyMap.get(status as reply_status) ?? http_reply_code.error;
+export function codeOfStatus(status:string|undefined) : HttpResponseCode {
+	return replyMap.get(status as reply_status) ?? httpResponseCode.error;
 }
 
 

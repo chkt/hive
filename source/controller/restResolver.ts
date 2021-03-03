@@ -1,5 +1,5 @@
 import { StateDescriptionMap } from '@chkt/states/dist/create';
-import { http_reply_code } from '../io/http';
+import { httpResponseCode } from '../io/http';
 import { decodeJsonRequest, encodeJsonReply, resolveRequestEncoding } from '../io/encodingTransforms';
 import { respondText } from '../io/responseTransforms';
 import { reply_status } from './apiTransforms';
@@ -39,7 +39,7 @@ export const resolver:StateDescriptionMap<ControllerContext> = {
 		transform : resolveRequestEncoding,
 		targets : [
 			{ id : 'decode_json', name : 'json' },
-			{ id : reply_status.mime_unsupported, name : 'mime_mismatch' },
+			{ id : reply_status.mime_unsupported, name : 'encoding_mismatch' },
 			{ id : reply_status.request_malformed }
 		]
 	},
@@ -99,7 +99,7 @@ export const resolver:StateDescriptionMap<ControllerContext> = {
 		targets : [{ id : 'end' }, { id : 'error' }]
 	},
 	error : {
-		transform : respondText.bind(null, http_reply_code.error),
+		transform : respondText.bind(null, httpResponseCode.error),
 		targets : [{ id : 'end' }]
 	}
 };

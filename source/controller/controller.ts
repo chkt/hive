@@ -3,7 +3,7 @@ import { contextToState } from '@chkt/states/dist/traverse';
 
 import { Hash } from '../common/base/Hash';
 import { JsonConformHash } from '../common/base/Json';
-import { http_redirect_code, http_reply_code, httpMessage } from '../io/http';
+import { httpCodeType, HttpDirectCode, HttpRedirectCode, messageOfCode, typeOfCode } from '../io/http';
 import { HttpContext, isHttpContext } from '../io/context';
 import { RouteMatch, RouteParams } from '../route/route';
 
@@ -14,12 +14,12 @@ interface CommonResult {
 
 interface ReplyResult
 extends CommonResult {
-	readonly code : http_reply_code;
+	readonly code : HttpDirectCode;
 }
 
 interface RedirectResult
 extends CommonResult {
-	readonly code : http_redirect_code;
+	readonly code : HttpRedirectCode;
 	readonly location : string;
 }
 
@@ -31,23 +31,27 @@ extends CommonResult {
 export type Result = ReplyResult|RedirectResult|StateResult;
 
 function isReplyResult(result:CommonResult) : result is ReplyResult {
-	return 'code' in result && (result as ReplyResult).code in http_reply_code;
+	const code = (result as ReplyResult).code;
+
+	return code !== undefined && typeOfCode(code) !== httpCodeType.redirect;
 }
 
 function isRedirectResult(result:CommonResult) : result is RedirectResult {
-	return 'code' in result && (result as RedirectResult).code in http_redirect_code;
+	const code = (result as RedirectResult).code;
+
+	return code !== undefined && typeOfCode(code) === httpCodeType.redirect;
 }
 
 function isStateResult(result:CommonResult) : result is StateResult {
 	return 'target' in result;
 }
 
-export function createReturnReply(code:http_reply_code, context:ControllerContext) : ReplyResult {
+export function createReturnReply(code:HttpDirectCode, context:ControllerContext) : ReplyResult {
 	return { code, context };
 }
 
 export function createRedirectReturn(
-	code:http_redirect_code,
+	code:HttpRedirectCode,
 	location:string,
 	context:ControllerContext
 ) : RedirectResult {
@@ -141,7 +145,7 @@ export async function controllerAction(
 			const reply = context.reply;
 
 			reply.statusCode = result.code;
-			reply.statusMessage = httpMessage.get(result.code) as string;
+			reply.statusMessage = messageOfCode(result.code);
 
 			if (isRedirectResult(result)) reply.setHeader('Location', result.location);
 

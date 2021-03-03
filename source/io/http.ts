@@ -1,4 +1,16 @@
-export enum http_method {
+import ReadOnlyDict = NodeJS.ReadOnlyDict;
+
+
+export type HttpMethod = 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'|'HEAD'|'OPTIONS';
+export type HttpSuccessCode = 200|201|202|204;
+export type HttpRedirectCode = 301|302|303|307|308;
+export type HttpClientErrorCode = 400|401|403|404|405|406|411|413|429;
+export type HttpServerErrorCode = 500|503;
+export type HttpDirectCode = HttpSuccessCode|HttpClientErrorCode|HttpServerErrorCode;
+export type HttpResponseCode = HttpDirectCode|HttpRedirectCode;
+
+
+export const enum httpMethod {
 	get = 'GET',
 	post = 'POST',
 	put = 'PUT',
@@ -8,68 +20,120 @@ export enum http_method {
 	options = 'OPTIONS'
 }
 
-export enum http_reply_code {
+export const enum httpResponseCode {
 	ok = 200,
 	created = 201,
 	accepted = 202,
 	empty = 204,
-	malformed = 400,
-	no_auth = 401,
-	no_perms = 403,
-	not_found = 404,
-	no_method = 405,
-	mismatch = 406,
-	no_length = 411,
-	too_big = 413,
-	too_many = 429,
-	error = 500,
-	no_service = 503
-}
-
-export enum http_redirect_code {
-	moved_get = 301,
-	temp_get = 302,
+	movedGet = 301,
+	tempGet = 302,
 	other = 303,
-	temp_all = 307,
-	moved_all = 308
+	tempAll = 307,
+	movedAll = 308,
+	malformed = 400,
+	noAuth = 401,
+	badAuth = 403,
+	notFound = 404,
+	noMethod = 405,
+	mismatch = 406,
+	noLength = 411,
+	tooBig = 413,
+	tooMany = 429,
+	error = 500,
+	noService = 503
 }
 
-export type http_code = http_reply_code | http_redirect_code;
+export const enum httpCodeType {
+	success = 200,
+	redirect = 300,
+	clientError = 400,
+	serverError = 500
+}
 
-export const httpMessage:ReadonlyMap<number, string> = new Map([
-	[200, 'Ok'], [201, 'Created'], [204, 'No Content'],
-	[301, 'Moved Permanently'], [302, 'Found'], [303, 'See Other'], [307, 'Temporary Redirect'],
-	[308, 'Permanent Redirect'],
-	[400, 'Bad Request'], [401, 'Unauthorized'], [403, 'Forbidden'], [404, 'Not Found'],
-	[405, 'Method Not Allowed'], [406, 'Not Acceptable'], [411, 'Length Required'], [413, 'Payload Too Large'], [429, 'Too Many Requests'],
-	[500, 'Internal Server Error'], [503, 'Service Unavailable']
-]);
+const httpMessageMap:ReadOnlyDict<string> = {
+	200 : 'Ok',
+	201 : 'Created',
+	202 : 'Accepted',
+	204 : 'No Content',
+	301 : 'Moved Permanently',
+	302 : 'Found',
+	303 : 'See Other',
+	307 : 'Temporary Redirect',
+	308 : 'Permanent Redirect',
+	400 : 'Bad Request',
+	401 : 'Unauthorized',
+	403 : 'Forbidden',
+	404 : 'Not Found',
+	405 : 'Method Not Allowed',
+	406 : 'Not Acceptable',
+	411 : 'Length Required',
+	413 : 'Payload Too Large',
+	429 : 'Too Many Requests',
+	500 : 'Internal Server Error',
+	503 : 'Service Unavailable'
+};
 
-export enum http_request_header {
-	accept = 'Accept',
-	accept_charset = 'Accept-Charset',
-	accept_language = 'Accept-Language',
-	accept_mime = 'Accept',
+export function typeOfCode(code:HttpResponseCode) : number {
+	return code - code % 100;
+}
+
+export function messageOfCode(code:HttpResponseCode) : string {
+	return httpMessageMap[code] ?? '';
+}
+
+export const enum httpRequestHeader {
+	acceptCharset = 'Accept-Charset',
+	acceptLanguage = 'Accept-Language',
+	acceptMediaType = 'Accept',
 	authorization = 'Authorization',
-	content_language = 'Content-Language',
-	content_length = 'Content-Length',
-	content_type = 'Content-Type',
-	cors_headers = 'Access-Control-Request-Headers',
-	cors_method = 'Access-Control-Request-Method',
+	contentLanguage = 'Content-Language',
+	contentLength = 'Content-Length',
+	contentType = 'Content-Type',
+	corsHeaders = 'Access-Control-Request-Headers',
+	corsMethod = 'Access-Control-Request-Method',
 	origin = 'Origin',
-	proxy_forwarded_for = 'X-Forwarded-For',
-	user_agent = 'User-Agent'
+	proxyForwardedFor = 'X-Forwarded-For',
+	userAgent = 'User-Agent'
 }
 
-export enum http_response_header {
-	allowed_methods = 'Allow',
-	content_language = 'Content-Language',
-	content_length = 'Content-Length',
-	content_type = 'Content-Type',
-	cors_headers = 'Access-Control-Allow-Headers',
-	cors_max_age = 'Access-Control-Max-Age',
-	cors_methods = 'Access-Control-Allow-Methods',
-	cors_origin = 'Access-Control-Allow-Origin',
-	redirect_location = 'Location',
+export const enum httpResponseHeader {
+	allowedMethods = 'Allow',
+	contentLanguage = 'Content-Language',
+	contentLength = 'Content-Length',
+	contentType = 'Content-Type',
+	corsHeaders = 'Access-Control-Allow-Headers',
+	corsMaxAge = 'Access-Control-Max-Age',
+	corsMethods = 'Access-Control-Allow-Methods',
+	corsOrigin = 'Access-Control-Allow-Origin',
+	redirectLocation = 'Location',
 	vary = 'Vary'
+}
+
+const listHeaderMap:readonly string[] = [
+	httpRequestHeader.acceptCharset,
+	httpRequestHeader.acceptLanguage,
+	httpRequestHeader.acceptMediaType,
+	httpRequestHeader.corsHeaders,
+	httpRequestHeader.proxyForwardedFor,
+	httpResponseHeader.allowedMethods,
+	httpResponseHeader.corsHeaders,
+	httpResponseHeader.corsMethods,
+	httpResponseHeader.vary
+];
+
+export function isListHeader(name:string) : boolean {
+	return listHeaderMap.includes(name);
+}
+
+export function capitalizeHeaderName(name:string) : string {
+	let res:string = '';
+	let a, b;
+
+	for (
+		[a, b] = [0, name.indexOf('-', 0) + 1];
+		b !== 0;
+		[a, b] = [b, name.indexOf('-', b) + 1]
+	) res += name.charAt(a).toUpperCase() + name.slice(a + 1, b).toLowerCase();
+
+	return res + name.charAt(a).toUpperCase() + name.slice(a + 1).toLowerCase();
 }

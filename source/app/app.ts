@@ -2,7 +2,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { Logger } from '@chkt/onceupon';
 import { contextToState, isErrorState } from '@chkt/states/dist/traverse';
 import { Injector, Provider } from '../inject/injector';
-import { http_reply_code } from '../io/http';
+import { httpResponseCode } from '../io/http';
 import { createHttpContext, HttpContext } from '../io/context';
 import { sendTextReply } from '../io/reply';
 
@@ -34,7 +34,7 @@ async function onRequest(
 	const res = await appContext.resolve(context);
 
 	if (isErrorState(res)) {
-		sendTextReply(response, http_reply_code.error);
+		sendTextReply(response, httpResponseCode.error);
 
 		appContext.common.logger.failure(res.error);
 	}
