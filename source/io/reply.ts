@@ -1,49 +1,58 @@
+import ReadOnlyDict = NodeJS.ReadOnlyDict;
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
-import { Hash } from '../common/base/Hash';
-import { mime_encoding, mime_type } from './mimeType';
-import { http_reply_code, httpMessage } from './http';
+import { createMediaType, subType, textEncoding, topType } from './media';
+import { HttpResponseCode, messageOfCode } from './http';
+import { encodeContentHeaders } from './messageBody';
 
 
-export function getHeaders(body:Buffer, mime:mime_type, enc:mime_encoding) : Hash<string> {
-	return {
-		'Content-Type' : `${mime}; charset=${enc}`,
-		'Content-Length' : body.byteLength.toFixed(0)
-	};
-}
-
-export function setHeaders(rep:ServerResponse, headers:Hash<string>) : void {
-	for (const name in headers) {
-		if (headers.hasOwnProperty(name)) rep.setHeader(name, headers[name]);
+export function setHeaders(rep:ServerResponse, headers:ReadOnlyDict<string>) : void {
+	for (const [name, value] of Object.entries(headers)) {
+		if (value !== undefined) rep.setHeader(name, value);
 	}
 }
 
-export function setResponseStatus(rep:ServerResponse, code:http_reply_code, headers?:Hash<string>) : void {
+export function setResponseStatus(rep:ServerResponse, code:HttpResponseCode, headers?:ReadOnlyDict<string>) : void {
 	rep.statusCode = code;
-	rep.statusMessage = httpMessage.get(code) as string;
+	rep.statusMessage = messageOfCode(code);
 
 	if (headers !== undefined) setHeaders(rep, headers);
 }
 
-export function sendTextReply(rep:ServerResponse, code:http_reply_code, headers:OutgoingHttpHeaders = {}) : void {
-	const msg = httpMessage.get(code) as string;
-	const body = Buffer.from(`${ code } - ${ msg }`);
+export function sendTextReply(rep:ServerResponse, code:HttpResponseCode, headers:OutgoingHttpHeaders = {}) : void {
+	const message = messageOfCode(code);
+	const type = createMediaType(topType.text, subType.textPlain, { charset : textEncoding.utf8 });
+	const body = Buffer.from(`${ code } - ${ message }`);
 
 	rep
-		.writeHead(code, msg, {
+		.writeHead(code, message, {
 			...headers,
-			...getHeaders(body, mime_type.text, mime_encoding.utf8)
+			...encodeContentHeaders(body, type)
 		})
 		.write(body);
 }
 
-export function sendJsonReply(rep:ServerResponse, code:http_reply_code, headers:OutgoingHttpHeaders = {}) : void {
-	const message = httpMessage.get(code) as string;
+export function sendJsonReply(rep:ServerResponse, code:HttpResponseCode, headers:OutgoingHttpHeaders = {}) : void {
+	const message = messageOfCode(code);
+	const type = createMediaType(topType.app, subType.appJson);
 	const body = Buffer.from(JSON.stringify({ status : message }));
 
 	rep
-		.writeHead(code, {
+		.writeHead(code, message, {
 			...headers,
-			...getHeaders(body, mime_type.json, mime_encoding.utf8)
+			...encodeContentHeaders(body, type)
+		})
+		.write(body);
+}
+
+export function sendHtmlReply(rep:ServerResponse, code:HttpResponseCode, headers:OutgoingHttpHeaders = {}) : void {
+	const message = messageOfCode(code);
+	const type = createMediaType(topType.text, subType.textHtml, { charset : textEncoding.utf8 });
+	const body = Buffer.from(`<!DOCTYPE html><html lang="en"><header><title>${ message }</title></header><body><pre>${ message }</pre></body></html>`);
+
+	rep
+		.writeHead(code, message, {
+			...headers,
+			...encodeContentHeaders(body, type)
 		})
 		.write(body);
 }
