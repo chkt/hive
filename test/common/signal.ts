@@ -42,7 +42,7 @@ describe('createSignal', () => {
 
 		msgs.push(`level 0, ${ signal.receiver.numReceived() }`);
 
-		new Promise(async resolve => {
+		new Promise<void>(async resolve => {
 			const receiver = signal.receiver.extend().onSignal(async () => {
 				msgs.push(`received level 1, ${ receiver.numReceived() }`);
 				resolve();
@@ -50,7 +50,7 @@ describe('createSignal', () => {
 
 			msgs.push(`level 1, ${ receiver.numReceived() }`);
 
-			await new Promise(resolve2 => {
+			await new Promise<void>(resolve2 => {
 				const receiver2 = receiver.extend().onSignal(async () => {
 					msgs.push(`received level 2, ${ receiver2.numReceived() }`);
 					resolve2();
