@@ -4,7 +4,7 @@ import { describe } from 'mocha';
 import Dict = NodeJS.Dict;
 import { IncomingMessage, ServerResponse } from 'http';
 import { Switch } from '@chkt/states/dist/state';
-import { http_method } from '../../source/io/http';
+import { httpMethod } from '../../source/io/http';
 import { ControllerContext } from '../../source/controller/controller';
 import { CorsOrigins, encodeCorsOrigin, encodeCorsPreflight } from '../../source/controller/corsTransforms';
 
@@ -14,7 +14,7 @@ interface MockReply {
 }
 
 
-function mockRequest(method:http_method = http_method.get, headers:Dict<string> = {}) : IncomingMessage {
+function mockRequest(method:httpMethod = httpMethod.get, headers:Dict<string> = {}) : IncomingMessage {
 	const req:Partial<IncomingMessage> = {
 		method,
 		headers
@@ -44,10 +44,10 @@ function mockContext(request:IncomingMessage, reply:ServerResponse) : Controller
 }
 
 function mockSwitch() : Switch<ControllerContext> {
-	const next:Partial<Switch<ControllerContext>> = {
-		success : context => ({ id : 'success', context }),
-		default : context => ({ id : 'default', context }),
-		failure : context => ({ id : 'failure', context })
+	const next = {
+		success : (context:ControllerContext) => ({ id : 'success', context }),
+		default : (context:ControllerContext) => ({ id : 'default', context }),
+		failure : (context:ControllerContext) => ({ id : 'failure', context })
 	};
 
 	return next as Switch<ControllerContext>;
@@ -58,7 +58,7 @@ describe('encodeCorsOrigin', () => {
 	it ('should attach an Access-Control-Allow-Origin header if in config', async () => {
 		const requestHeaders:Dict<string> = {};
 		const replyHeaders:Dict<string> = {};
-		const context = mockContext(mockRequest(http_method.get, requestHeaders), mockReply(replyHeaders));
+		const context = mockContext(mockRequest(httpMethod.get, requestHeaders), mockReply(replyHeaders));
 		const next = mockSwitch();
 		const sites:CorsOrigins = [{
 			origin : 'http://bar',
@@ -83,27 +83,27 @@ describe('encodeCorsPreflight', () => {
 		const next = mockSwitch();
 		const sites:CorsOrigins = [{
 			origin : 'http://foo',
-			allowedMethods : [ http_method.post, http_method.put ],
+			allowedMethods : [ httpMethod.post, httpMethod.put ],
 			allowedHeaders : [ 'Accept', 'Content-Type' ],
 			maxAge : 1234
 		}];
 
 		let reply = mockReply();
-		let context = mockContext(mockRequest(http_method.options), reply);
+		let context = mockContext(mockRequest(httpMethod.options), reply);
 
 		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
-		assert.strictEqual(reply.statusCode, 200);
-		assert.strictEqual(reply.statusMessage, 'Ok');
+		assert.strictEqual(reply.statusCode, 204);
+		assert.strictEqual(reply.statusMessage, 'No Content');
 		assert.deepStrictEqual(reply.headers, {});
 
 		reply = mockReply();
-		context = mockContext(mockRequest(http_method.options, {
+		context = mockContext(mockRequest(httpMethod.options, {
 			origin : 'http://foo'
 		}), reply);
 
 		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
-		assert.strictEqual(reply.statusCode, 200);
-		assert.strictEqual(reply.statusMessage, 'Ok');
+		assert.strictEqual(reply.statusCode, 204);
+		assert.strictEqual(reply.statusMessage, 'No Content');
 		assert.deepStrictEqual(reply.headers, {
 			'Access-Control-Allow-Origin' : 'http://foo',
 			'Access-Control-Allow-Methods' : '',
@@ -113,18 +113,18 @@ describe('encodeCorsPreflight', () => {
 		});
 
 		reply = mockReply();
-		context = mockContext(mockRequest(http_method.options, {
+		context = mockContext(mockRequest(httpMethod.options, {
 			origin : 'http://foo',
-			'access-control-request-method' : http_method.post,
+			'access-control-request-method' : httpMethod.post,
 			'access-control-request-headers' : 'Accept, Content-Type, Authorization'
 		}), reply);
 
 		assert.deepStrictEqual(await encodeCorsPreflight(sites, context, next), { id : 'default', context });
-		assert.strictEqual(reply.statusCode, 200);
-		assert.strictEqual(reply.statusMessage, 'Ok');
+		assert.strictEqual(reply.statusCode, 204);
+		assert.strictEqual(reply.statusMessage, 'No Content');
 		assert.deepStrictEqual(reply.headers, {
 			'Access-Control-Allow-Origin' : 'http://foo',
-			'Access-Control-Allow-Methods' : http_method.post,
+			'Access-Control-Allow-Methods' : httpMethod.post,
 			'Access-Control-Allow-Headers' : 'Content-Type',
 			'Access-Control-Max-Age' : '1234',
 			'Vary' : 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'

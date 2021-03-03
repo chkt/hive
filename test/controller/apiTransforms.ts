@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
 
-import { http_reply_code } from '../../source/io/http';
+import { httpResponseCode } from '../../source/io/http';
 import { codeOfStatus, filterView, reply_status } from '../../source/controller/apiTransforms';
 import { ControllerContext } from "../../source/controller/controller";
 import { Switch } from "@chkt/states/dist/state";
@@ -15,37 +15,37 @@ function mockContext(view:JsonConformHash = {}) : ControllerContext {
 }
 
 function mockSwitch() : Switch<ControllerContext> {
-	const next:Partial<Switch<ControllerContext>> = {
-		success : context => ({ id : 'success', context }),
-		default : context => ({ id : 'default', context }),
-		failure : context => ({ id : 'failure', context })
+	const res = {
+		success : (context:ControllerContext) => ({ id : 'success', context }),
+		default : (context:ControllerContext) => ({ id : 'default', context }),
+		failure : (context:ControllerContext) => ({ id : 'failure', context })
 	};
 
-	return next as Switch<ControllerContext>;
+	return res as Switch<ControllerContext>;
 }
 
 
 describe('codeOfStatus', () => {
 	it('should return a return code for each reply_status', () => {
-		assert.strictEqual(codeOfStatus(reply_status.action_unavailable), http_reply_code.no_method);
-		assert.strictEqual(codeOfStatus(reply_status.auth_failed), http_reply_code.no_auth);
-		assert.strictEqual(codeOfStatus(reply_status.auth_malformed), http_reply_code.no_auth);
-		assert.strictEqual(codeOfStatus(reply_status.endpoint_unavailable), http_reply_code.not_found);
-		assert.strictEqual(codeOfStatus(reply_status.error), http_reply_code.error);
-		assert.strictEqual(codeOfStatus(reply_status.mime_unsupported), http_reply_code.malformed);
-		assert.strictEqual(codeOfStatus(reply_status.ok), http_reply_code.ok);
-		assert.strictEqual(codeOfStatus(reply_status.request_malformed), http_reply_code.malformed);
-		assert.strictEqual(codeOfStatus(reply_status.request_unsupported), http_reply_code.malformed);
-		assert.strictEqual(codeOfStatus(reply_status.resource_missing), http_reply_code.not_found);
-		assert.strictEqual(codeOfStatus(reply_status.service_unavailable), http_reply_code.no_service);
+		assert.strictEqual(codeOfStatus(reply_status.action_unavailable), httpResponseCode.noMethod);
+		assert.strictEqual(codeOfStatus(reply_status.auth_failed), httpResponseCode.noAuth);
+		assert.strictEqual(codeOfStatus(reply_status.auth_malformed), httpResponseCode.noAuth);
+		assert.strictEqual(codeOfStatus(reply_status.endpoint_unavailable), httpResponseCode.notFound);
+		assert.strictEqual(codeOfStatus(reply_status.error), httpResponseCode.error);
+		assert.strictEqual(codeOfStatus(reply_status.mime_unsupported), httpResponseCode.malformed);
+		assert.strictEqual(codeOfStatus(reply_status.ok), httpResponseCode.ok);
+		assert.strictEqual(codeOfStatus(reply_status.request_malformed), httpResponseCode.malformed);
+		assert.strictEqual(codeOfStatus(reply_status.request_unsupported), httpResponseCode.malformed);
+		assert.strictEqual(codeOfStatus(reply_status.resource_missing), httpResponseCode.notFound);
+		assert.strictEqual(codeOfStatus(reply_status.service_unavailable), httpResponseCode.noService);
 	});
 
 	it('should return 500 for unidentified strings', () => {
-		assert.strictEqual(codeOfStatus('foo'), http_reply_code.error);
+		assert.strictEqual(codeOfStatus('foo'), httpResponseCode.error);
 	});
 
 	it('should return 500 for undefined values', () => {
-		assert.strictEqual(codeOfStatus(undefined), http_reply_code.error);
+		assert.strictEqual(codeOfStatus(undefined), httpResponseCode.error);
 	})
 });
 

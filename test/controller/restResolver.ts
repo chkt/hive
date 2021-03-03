@@ -5,7 +5,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import { createTransitionMap } from '@chkt/states/dist/create';
 import { bindContextToState, contextToState, isErrorState } from '@chkt/states/dist/traverse';
 import { Hash } from '../../source/common/base/Hash';
-import { http_method, http_reply_code } from '../../source/io/http';
+import { httpMethod, httpResponseCode } from '../../source/io/http';
 import { rest_action } from '../../source/controller/restTransforms';
 import { resolver, startId } from '../../source/controller/restResolver';
 import {
@@ -104,12 +104,12 @@ function mockControllerContext(
 describe('resolver', () => {
 	it('should handle a list request', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.get, '/collection');
+		const request = mockIncomingMessage(httpMethod.get, '/collection');
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, {}, {
-			list : async ctx => createReturnReply(http_reply_code.ok, {
+			list : async ctx => createReturnReply(httpResponseCode.ok, {
 				...ctx,
 				// @ts-ignore
 				view : [{ id : 'foo'}, { id : 'bar' }]
@@ -119,6 +119,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'action', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.list },
@@ -140,12 +141,12 @@ describe('resolver', () => {
 
 	it('should handle a read request', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.get, 'collection/1');
+		const request = mockIncomingMessage(httpMethod.get, 'collection/1');
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
-			read : async ctx => createReturnReply(http_reply_code.ok, {
+			read : async ctx => createReturnReply(httpResponseCode.ok, {
 				...ctx,
 				view : { id : 'foo' }
 			})
@@ -153,6 +154,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'action', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.read },
@@ -174,7 +176,7 @@ describe('resolver', () => {
 
 	it('should handle a create request', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.post, '/collection', {
+		const request = mockIncomingMessage(httpMethod.post, '/collection', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '12'
 		}, '{"id":"foo"}');
@@ -182,7 +184,7 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, {}, {
-			create : async ctx => createReturnReply(http_reply_code.created, {
+			create : async ctx => createReturnReply(httpResponseCode.created, {
 				...ctx,
 				view : { id : 'bar' }
 			})
@@ -190,6 +192,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'request_encoding', 'decode_json', 'action', 'encode_json'],
 			context : {
 				...context,
 				requestBody : { id : 'foo' },
@@ -212,7 +215,7 @@ describe('resolver', () => {
 
 	it('should handle a update request', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.put, '/collection/1', {
+		const request = mockIncomingMessage(httpMethod.put, '/collection/1', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '12'
 		}, '{"id":"foo"}');
@@ -220,7 +223,7 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
-			update : async ctx => createReturnReply(http_reply_code.ok, {
+			update : async ctx => createReturnReply(httpResponseCode.ok, {
 				...ctx,
 				view : { id : 'bar' }
 			})
@@ -228,6 +231,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'request_encoding', 'decode_json', 'action', 'encode_json'],
 			context : {
 				...context,
 				requestBody : { id : 'foo' },
@@ -250,16 +254,17 @@ describe('resolver', () => {
 
 	it('should handle a delete request', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.delete, '/collection/1');
+		const request = mockIncomingMessage(httpMethod.delete, '/collection/1');
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1'}, {
-			delete : async ctx => createReturnReply(http_reply_code.ok, ctx)
+			delete : async ctx => createReturnReply(httpResponseCode.ok, ctx)
 		});
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'action', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.delete },
@@ -280,7 +285,7 @@ describe('resolver', () => {
 
 	it('should handle invalid request methods', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.patch, '/collection/1', {
+		const request = mockIncomingMessage(httpMethod.patch, '/collection/1', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '12'
 		}, '{"id":"foo"}');
@@ -293,6 +298,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'request unsupported', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				attributes : { status : reply_status.request_unsupported },
@@ -313,7 +319,7 @@ describe('resolver', () => {
 
 	it('should handle unimplemented request methods', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.put, '/collection/1', {
+		const request = mockIncomingMessage(httpMethod.put, '/collection/1', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '12'
 		}, '{"id":"foo"}');
@@ -321,12 +327,13 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
-			read : async ctx => createReturnReply(http_reply_code.ok, ctx),
-			create : async ctx => createReturnReply(http_reply_code.ok, ctx)
+			read : async ctx => createReturnReply(httpResponseCode.ok, ctx),
+			create : async ctx => createReturnReply(httpResponseCode.ok, ctx)
 		});
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'action unavailable', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.update, status : reply_status.action_unavailable },
@@ -361,6 +368,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'request_encoding', 'representation unsupported', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.update, status : reply_status.mime_unsupported },
@@ -383,7 +391,7 @@ describe('resolver', () => {
 
 	it('should handle decoding errors', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.put, '/collection/1', {
+		const request = mockIncomingMessage(httpMethod.put, '/collection/1', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '3'
 		}, 'foo');
@@ -391,11 +399,12 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1'}, {
-			update : async ctx => createReturnReply(http_reply_code.ok, ctx)
+			update : async ctx => createReturnReply(httpResponseCode.ok, ctx)
 		});
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'request_encoding', 'decode_json', 'request malformed', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.update, status : reply_status.request_malformed },
@@ -417,7 +426,7 @@ describe('resolver', () => {
 
 	it('should handle the malformed signal_type', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.put, '/collection/1', {
+		const request = mockIncomingMessage(httpMethod.put, '/collection/1', {
 			'content-type' : 'application/json; charset=utf-8',
 			'content-length' : '12'
 		}, '{"id":"foo"}');
@@ -430,6 +439,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'request_encoding', 'decode_json', 'action', 'request malformed', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				requestBody : { id : 'foo'},
@@ -452,7 +462,7 @@ describe('resolver', () => {
 
 	it('should handle the not found signal_type', async () => {
 		const messages = {};
-		const request = mockIncomingMessage(http_method.get, '/collection/999999');
+		const request = mockIncomingMessage(httpMethod.get, '/collection/999999');
 		const reply = mockServerResponse(messages);
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
@@ -462,6 +472,7 @@ describe('resolver', () => {
 
 		assert.deepStrictEqual(await resolve(context), {
 			id : 'end',
+			path : ['resolve_method', 'filter_action', 'action', 'resource not found', 'error_reply', 'encode_json'],
 			context : {
 				...context,
 				attributes : { action : rest_action.read, status : reply_status.resource_missing },
@@ -506,7 +517,7 @@ describe('resolver', () => {
 
 		const resolve = bindContextToState(createTransitionMap(resolver), startId);
 		const context = mockControllerContext(request, reply, resolve, { id : '1' }, {
-			read : async ctx => createReturnReply(http_reply_code.ok, {
+			read : async ctx => createReturnReply(httpResponseCode.ok, {
 				...ctx,
 				// @ts-ignore
 				view : { id : 1n }
