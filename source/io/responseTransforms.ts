@@ -1,12 +1,11 @@
 import { State, Switch } from '@chkt/states/dist/state';
-import { http_method, http_reply_code } from './http';
-import { encodeListHeader } from './request';
-import { sendTextReply } from './reply';
+import { HttpResponseCode } from './http';
+import { sendHtmlReply, sendTextReply } from './reply';
 import { ControllerContext } from '../controller/controller';
 
 
 export async function respondText(
-	code:http_reply_code,
+	code:HttpResponseCode,
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
@@ -15,16 +14,12 @@ export async function respondText(
 	return next.default(context);
 }
 
-export async function respondTextBadMethod(
-	allowed:readonly http_method[],
+export async function respondHtml(
+	code:HttpResponseCode,
 	context:ControllerContext,
 	next:Switch<ControllerContext>
 ) : Promise<State<ControllerContext>> {
-	const reply = context.reply;
+	sendHtmlReply(context.reply, code);
 
-	reply.setHeader('Allow', encodeListHeader(allowed));
-
-	sendTextReply(reply, http_reply_code.no_method);
-
-	return next.success(context);
+	return next.default(context);
 }
