@@ -1,23 +1,26 @@
 import ReadOnlyDict = NodeJS.ReadOnlyDict;
+import Dict = NodeJS.Dict;
 import * as http from 'http';
 import * as https from 'https';
 import { Hash } from '../common/base/Hash';
-import { decodeMimeType, isEncoding, isMimeType, mime_encoding, mime_type, MimeParts, MimeType } from './mimeType';
-import { ip_port } from './ip';
-import { http_request_header } from './http';
+import { ipPort } from './ip';
+import { MediaType, parseMediaType, subType, topType } from './media';
+import { httpRequestHeader } from './http';
 
 
 type transform<R> = (token:string) => R;
 type differentiate<T> = (a:T, b:T) => number;
+
+export interface Token<T> {
+	readonly value : T;
+	readonly params : ReadOnlyDict<T>;
+}
 
 export interface Preference<T> {
 	readonly token : string;
 	readonly data : T;
 	readonly q : number;
 }
-
-
-const contentTypeExpr = /^([a-z]+\/[-a-z]+)(?:;\s*charset=([a-z\-0-9]+))?$/;
 
 
 function capitalizeHeaderName(header:string) : string {
@@ -28,6 +31,19 @@ function capitalizeHeaderName(header:string) : string {
 	}
 
 	return header.charAt(0).toUpperCase() + header.slice(1);
+}
+
+function decodeTokenHeader<T>(segment:string, decode:transform<T>) : Token<T> {
+	const [token, ...attrs] = segment.split(';');
+	const params:Dict<T> = {};
+
+	for (const attr of attrs) {
+		const [key, value] = attr.trim().split('=', 2);
+
+		params[key] = params[key] ?? decode(value ?? '');
+	}
+
+	return { value : decode(token), params };
 }
 
 function decodeListHeader<T>(
@@ -59,46 +75,36 @@ export function decodeHeaderListHeader(list:string) {
 	return decodeListHeader(list, capitalizeHeaderName);
 }
 
-export function decodeAcceptHeader(accept:string) : readonly Preference<MimeParts>[] {
-	return decodePreferenceHeader(
-		accept,
-		decodeMimeType,
-		(a, b) =>
-			(b.topType === '*' ? 0 : b.subType === '*' ? 1 : 2) -
-			(a.topType === '*' ? 0 : a.subType === '*' ? 1 : 2)
-	);
-}
-
-export function encodeListHeader(header:ReadonlyArray<string>) : string {
+export function encodeHeaderListHeader(header:ReadonlyArray<string>) : string {
 	return header.join(', ');
 }
 
-export function encodeContentType(mime:mime_type, charset?:mime_encoding) : string {
-	return mime + (charset !== undefined ? `; charset=${ charset }` : '');
+export function decodeContentTypeHeader(type:string = '') : MediaType {
+	const token = decodeTokenHeader(type, value => value.toLowerCase().trimEnd());
+
+	return parseMediaType(token.value, token.params);
 }
 
-export function decodeContentType(header:string) : MimeType {
-	const match = header.toLowerCase().match(contentTypeExpr);
-
-	if (match !== null) {
-		const mime = match[1];
-		const char = match[2] !== undefined ? match[2] : mime_encoding.utf8;
-
-		if (isMimeType(mime) && isEncoding(char)) return [mime, char];
-	}
-
-	throw new Error(`'${ header }' not a '${ http_request_header.content_type }'`);
+export function decodeAcceptHeader(accept:string) : readonly Preference<MediaType>[] {
+	return decodePreferenceHeader(
+		accept,
+		decodeContentTypeHeader,
+		(a, b) =>
+			(b.top === topType.any ? 0 : b.sub === subType.any ? 1 : 2) -
+			(a.top === topType.any ? 0 : a.sub === subType.any ? 1 : 2)
+	);
 }
 
-export function encodeContentHeaders(body:Buffer, mime:mime_type, encoding?:mime_encoding) : ReadOnlyDict<string> {
-	return {
-		[ http_request_header.content_type ] : encodeContentType(mime, encoding),
-		[ http_request_header.content_length ] : body.byteLength.toFixed(0)
-	};
+export function decodeAcceptCharsetHeader(accept:string) : readonly Preference<string>[] {
+	return decodePreferenceHeader(
+		accept,
+		value => value,
+		(a, b) => (b === '*' ? 0 : 1) - (a === '*' ? 0 : 1)
+	);
 }
 
 export function getRemoteAddress(req:http.IncomingMessage) : string {
-	const forwarded = req.headers[ http_request_header.proxy_forwarded_for.toLowerCase() ];
+	const forwarded = req.headers[ httpRequestHeader.proxyForwardedFor.toLowerCase() ];
 	const remote = req.connection.remoteAddress;
 
 	const ips = (typeof forwarded === 'string' ? forwarded : '')
@@ -144,7 +150,7 @@ export async function getBody(req:http.IncomingMessage, timeout:number = 10000) 
 
 export function send(props:https.RequestOptions, headers:Hash<string> = {}, body?:Buffer) : Promise<http.IncomingMessage> {
 	return new Promise((resolve, reject) => {
-		const request = (props.port ?? ip_port.https) === ip_port.http ? http.request(props) : https.request(props);
+		const request = (props.port ?? ipPort.https) === ipPort.http ? http.request(props) : https.request(props);
 
 		request.on('response', resolve);
 		request.on('error', reject);
