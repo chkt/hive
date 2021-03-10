@@ -48,25 +48,68 @@ function decodeTokenHeader<T>(segment:string, decode:transform<T>) : Token<T> {
 
 function decodeListHeader<T>(
 	header:string,
-	normalize:transform<T>
+	normalize:transform<T|null>
 ) : T[] {
-	return header !== '' ? header.split(',').map(value => normalize(value.trim())) : [];
+	const res:T[] = [];
+
+	if (header === '') return res;
+
+	for (const token of header.split(',')) {
+		let value:T|null;
+
+		try {
+			value = normalize(token.trim());
+		}
+		catch (err) {
+			value = null;
+		}
+
+		if (value !== null) res.push(value);
+	}
+
+	return res;
+}
+
+function normalizePreference(token:string) : Preference<string>|null {
+	const len = token.length;
+	const mod = len + 1;
+
+	let q = 1.0;
+	let data:string = token;
+
+	for (
+		let a = (token.indexOf(';') + mod) % mod, b = (token.indexOf(';', a + 1) + mod) % mod;
+		a < len;
+		a = b, b = (token.indexOf(';', a + 1) + mod) % mod
+	) {
+		const delim = Math.min((token.indexOf('=', a + 1) + mod) % mod, b);
+
+		if (token.slice(a + 1, delim).trim() !== 'q') continue;
+		else if (b - delim < 2) return null;
+
+		q = Number(token.slice(delim + 1, b).trim());
+		data = token.slice(0, a) + token.slice(b);
+
+		break;
+	}
+
+	if (Number.isNaN(q) || q < 0 || data === null) return null;
+	else return { token, data, q : Math.min(Math.max(q, 0.0), 1.0) };
 }
 
 function decodePreferenceHeader<T>(
 	header:string,
-	decode:transform<T>,
+	decode:transform<T|null>,
 	sort:differentiate<T>
 ) : readonly Preference<T>[] {
-	return decodeListHeader(header, segment => {
-			const [ token, param ] = segment.split(';', 2);
-			const [ key, value ] = (param ?? 'q=1').split('=', 2);
-			const q = Number(value);
+	return decodeListHeader(header, normalizePreference)
+		.reduce<Preference<T>[]>((prev, pref) => {
+			const data = decode(pref.data);
 
-			if (token === '' || key !== 'q' || Number.isNaN(q) || q === 0.0) throw new Error(`'${ header }' not a preference header`);
+			if (data !== null) prev.push({ ...pref, data });
 
-			return { token, data : decode(token), q };
-		})
+			return prev;
+		}, [])
 		.sort((a, b) => b.q - a.q || sort(a.data, b.data));
 }
 
@@ -90,15 +133,15 @@ export function decodeAcceptHeader(accept:string) : readonly Preference<MediaTyp
 		accept,
 		decodeContentTypeHeader,
 		(a, b) =>
-			(b.top === topType.any ? 0 : b.sub === subType.any ? 1 : 2) -
-			(a.top === topType.any ? 0 : a.sub === subType.any ? 1 : 2)
+			((b.top === topType.any ? 0 : b.sub === subType.any ? 2 ** 6 : 2 ** 7) + Object.keys(b.params).length) -
+			((a.top === topType.any ? 0 : a.sub === subType.any ? 2 ** 6 : 2 ** 7) + Object.keys(a.params).length)
 	);
 }
 
 export function decodeAcceptCharsetHeader(accept:string) : readonly Preference<string>[] {
 	return decodePreferenceHeader(
 		accept,
-		value => value,
+		value => value !== '' ? value : null,
 		(a, b) => (b === '*' ? 0 : 1) - (a === '*' ? 0 : 1)
 	);
 }
