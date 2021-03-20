@@ -100,7 +100,9 @@ export function createSignal() : Signal {
 
 				try {
 					await (handlers.get(item) ?? asyncNoop)(item);
-				} catch {}
+				}
+				/* tslint:disable-next-line:no-empty */
+				catch {}
 			}
 		},
 		receiver
