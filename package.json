@@ -43,6 +43,6 @@
 		"@chkt/onceupon": "1.0",
 		"@chkt/states": "1.1",
 		"path-to-regexp": "^6.2",
-		"query-string": "^6.14"
+		"query-string": "^7.0"
 	}
 }
