@@ -46,8 +46,9 @@ export function sendJsonReply(rep:ServerResponse, code:HttpResponseCode, headers
 
 export function sendHtmlReply(rep:ServerResponse, code:HttpResponseCode, headers:OutgoingHttpHeaders = {}) : void {
 	const message = messageOfCode(code);
+	const content = `${ code } - ${ message }`;
 	const type = createMediaType(topType.text, subType.textHtml, { charset : textEncoding.utf8 });
-	const body = Buffer.from(`<!DOCTYPE html><html lang="en"><header><title>${ message }</title></header><body><pre>${ message }</pre></body></html>`);
+	const body = Buffer.from(`<!DOCTYPE html><html lang="en"><header><title>${ content }</title></header><body><pre>${ content }</pre></body></html>`);
 
 	rep
 		.writeHead(code, message, {
