@@ -4,7 +4,7 @@ import ReadOnlyDict = NodeJS.ReadOnlyDict;
 export type HttpMethod = 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'|'HEAD'|'OPTIONS';
 export type HttpSuccessCode = 200|201|202|204;
 export type HttpRedirectCode = 301|302|303|307|308;
-export type HttpClientErrorCode = 400|401|403|404|405|406|411|413|429;
+export type HttpClientErrorCode = 400|401|403|404|405|406|410|411|413|429;
 export type HttpServerErrorCode = 500|503;
 export type HttpDirectCode = HttpSuccessCode|HttpClientErrorCode|HttpServerErrorCode;
 export type HttpResponseCode = HttpDirectCode|HttpRedirectCode;
@@ -36,6 +36,7 @@ export const enum httpResponseCode {
 	notFound = 404,
 	noMethod = 405,
 	mismatch = 406,
+	gone = 410,
 	noLength = 411,
 	tooBig = 413,
 	tooMany = 429,
@@ -66,6 +67,7 @@ const httpMessageMap:ReadOnlyDict<string> = {
 	404 : 'Not Found',
 	405 : 'Method Not Allowed',
 	406 : 'Not Acceptable',
+	410 : 'Gone',
 	411 : 'Length Required',
 	413 : 'Payload Too Large',
 	429 : 'Too Many Requests',
