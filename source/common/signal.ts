@@ -65,7 +65,7 @@ function childWhile<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise
 
 function proxyWhile<R>(this:Handler, fn:(abort:Handler) => Promise<R>) : Promise<R> {
 	return fn(setProxy.call(this)).then(
-		resetChild.bind<Handler, R, R>(this),
+		this.release.bind(this),
 		reason => Promise.reject(resetChild.call(this, reason))
 	);
 }
